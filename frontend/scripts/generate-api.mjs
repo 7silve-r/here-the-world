@@ -42,6 +42,6 @@ output += "}\n";
 output += `export const endpoints = ${JSON.stringify(Object.fromEntries(Object.entries(spec.paths).flatMap(([path, methods]) => Object.entries(methods).map(([method, op]) => [op.operationId, { path, method: method.toUpperCase() }]))), null, 2)} as const;\n`;
 const target = new URL("../src/api/generated.ts", import.meta.url);
 if (process.argv.includes("--check")) {
-  if (readFileSync(target, "utf8") !== output)
+  if (readFileSync(target, "utf8").replace(/\r\n/g, "\n") !== output)
     throw new Error("API 类型过期，请执行 npm run generate:api");
 } else writeFileSync(target, output);

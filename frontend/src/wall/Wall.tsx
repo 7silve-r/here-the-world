@@ -8,14 +8,13 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, Expand, Move, RotateCcw } from "lucide-react";
+import { ArrowUpRight, Expand, Move, RotateCcw, X } from "lucide-react";
 import {
   BLOCK_HEIGHT,
   BLOCK_WIDTH,
   pixel,
   reflow,
   slotsForBlock,
-  stableHit,
   template,
   visibleBlocks,
   type Rect,
@@ -33,31 +32,32 @@ import {
 } from "../feed/provider";
 import { Artwork, Button, Notice, useNavigation } from "../shared/ui";
 import { useReducedMotion } from "../shared/hooks";
+import { activateSlot, fogStyle, readFogLevel } from "./interaction";
 
 function Block({
   column,
   row,
-  onOpen,
+  selectedSlot,
+  onActivate,
+  onClear,
   dragging,
   reduced,
   shift,
 }: {
   column: number;
   row: number;
-  onOpen: (id: string, key: string) => void;
+  selectedSlot: string | null;
+  onActivate: (id: string, key: string) => void;
+  onClear: () => void;
   dragging: React.RefObject<boolean>;
   reduced: boolean;
   shift: number;
 }) {
   const elements = useRef<(HTMLButtonElement | null)[]>([]),
-    director = useRef<MotionDirector | null>(null),
-    root = useRef<HTMLDivElement>(null);
-  const [target, setTarget] = useState<number | null>(null),
-    timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined),
-    touch = useRef(false),
-    touchPreview = useRef<number | null>(null),
-    pending = useRef<number | null>(null);
+    director = useRef<MotionDirector | null>(null);
   const slots = useMemo(() => slotsForBlock(column, row), [column, row]);
+  const selectedIndex = slots.findIndex((slot) => slot.key === selectedSlot);
+  const target = selectedIndex < 0 ? null : selectedIndex;
   useLayoutEffect(() => {
     const commit = (rects: Rect[]) =>
       rects.forEach((r, i) => {
@@ -73,41 +73,18 @@ function Block({
     director.current = new MotionDirector(rects, commit);
     return () => {
       director.current?.destroy();
-      clearTimeout(timer.current);
     };
   }, [column, row]);
   useEffect(
     () => director.current?.to(reflow(column, row, target).map(pixel), reduced),
     [column, row, target, reduced],
   );
-  const preview = (index: number | null) => {
-    if (pending.current === index) return;
-    pending.current = index;
-    clearTimeout(timer.current);
-    timer.current = setTimeout(() => setTarget(index), 120);
-  };
   return (
     <div
-      ref={root}
       className="wall-block"
       data-block={`${column},${row}`}
       style={{
         transform: `translate(${column * BLOCK_WIDTH + shift}px,${row * BLOCK_HEIGHT}px)`,
-      }}
-      onPointerMove={(e) => {
-        if (dragging.current || e.pointerType === "touch") return;
-        const rect = root.current!.getBoundingClientRect();
-        const s = rect.width / BLOCK_WIDTH;
-        const hit = stableHit(
-          column,
-          row,
-          (e.clientX - rect.left) / s,
-          (e.clientY - rect.top) / s,
-        );
-        preview(hit < 0 ? null : hit);
-      }}
-      onPointerLeave={() => {
-        if (!touch.current) preview(null);
       }}
     >
       {slots.map((slot, i) => {
@@ -120,22 +97,18 @@ function Block({
             }}
             key={slot.key}
             data-slot={slot.key}
-            className={`wall-tile ${target === i ? "previewing" : ""} ${w ? "" : "material-tile"}`}
+            className={`wall-tile ${target === i ? "previewing is-selected" : ""} ${w ? "" : "material-tile"}`}
             aria-label={
               w
-                ? `${w.title}，${w.author.displayName}，预览后打开作品`
+                ? `${w.title}，${w.author.displayName}，${target === i ? "再次点击进入详情" : "点击展开作品"}`
                 : "尚未探索的空间"
             }
             tabIndex={w ? 0 : -1}
             aria-hidden={!w}
+            aria-pressed={w ? target === i : undefined}
             onFocus={() => {
-              setTarget(i);
               wallMemory.focus = slot.key;
               saveWall();
-            }}
-            onBlur={() => setTarget(null)}
-            onPointerDown={(e) => {
-              touch.current = e.pointerType === "touch";
             }}
             onClick={(e) => {
               if (dragging.current) {
@@ -143,18 +116,12 @@ function Block({
                 return;
               }
               if (!w) return;
-              if (touch.current && touchPreview.current !== i) {
-                touchPreview.current = i;
-                setTarget(i);
-                return;
-              }
               wallMemory.focus = slot.key;
-              saveWall();
-              onOpen(w.id, slot.key);
+              onActivate(w.id, slot.key);
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
-                setTarget(null);
+                onClear();
                 e.currentTarget.blur();
               }
               if (e.key.startsWith("Arrow")) {
@@ -206,8 +173,7 @@ function Block({
             )}
             {w && target === i && (
               <span className="open-hint">
-                {touch.current ? "再点一次，进入作品" : "进入这一刻"}{" "}
-                <ArrowUpRight size={14} />
+                再次点击，进入详情 <ArrowUpRight size={14} />
               </span>
             )}
           </button>
@@ -242,6 +208,30 @@ export default function Wall() {
     }),
     [clip, setClip] = useState({ ...camera.current }),
     [moving, setMoving] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(
+      wallMemory.selectedSlot,
+    ),
+    [fog, setFog] = useState(() =>
+      readFogLevel(localStorage.getItem("htw.wall.fog")),
+    );
+  const selection = useRef(selectedSlot);
+  const clearSelection = () => {
+    selection.current = null;
+    setSelectedSlot(null);
+    wallMemory.selectedSlot = null;
+    saveWall();
+  };
+  const activate = (id: string, key: string) => {
+    const next = activateSlot(selection.current, key);
+    selection.current = next.selectedSlot;
+    setSelectedSlot(next.selectedSlot);
+    wallMemory.selectedSlot = next.selectedSlot;
+    saveWall();
+    if (next.open) navigate(`/works/${encodeURIComponent(id)}`);
+  };
+  useEffect(() => {
+    localStorage.setItem("htw.wall.fog", String(fog));
+  }, [fog]);
   const scale = size.width < 640 ? 0.62 : size.width < 1000 ? 0.8 : 1;
   const blocks = useMemo(
     () => visibleBlocks(clip, size, scale),
@@ -337,9 +327,14 @@ export default function Wall() {
       className={`wall ${moving ? "is-dragging" : ""} ${open ? "nav-open" : ""}`}
       ref={viewport}
       aria-label="可向四个方向拖动的作品墙"
+      style={fogStyle(fog)}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") clearSelection();
+      }}
       onFocusCapture={(e) => {
         if (!(e.target instanceof HTMLButtonElement) || !e.target.dataset.slot)
           return;
+        if (!e.target.matches(":focus-visible")) return;
         const rect = e.target.getBoundingClientRect(),
           bounds = viewport.current!.getBoundingClientRect();
         let dx = 0,
@@ -402,7 +397,9 @@ export default function Wall() {
             shift={open ? (b.column < 0 ? -320 : 320) : 0}
             dragging={dragging}
             reduced={reduced}
-            onOpen={(id) => navigate(`/works/${encodeURIComponent(id)}`)}
+            selectedSlot={selectedSlot}
+            onActivate={activate}
+            onClear={clearSelection}
           />
         ))}
       </div>
@@ -420,10 +417,35 @@ export default function Wall() {
           </strong>
         </div>
         <div className="wall-tools">
-          <span className="touch-instruction">点按预览，再点打开</span>
+          <span className="touch-instruction">点按展开，再点进入详情</span>
           <span className="drag-instruction">
-            <Move size={14} /> 拖动画布 · 悬停预览 · 点击进入
+            <Move size={14} /> 悬停提亮 · 点击展开 · 再点进入
           </span>
+          <label
+            className="fog-control"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <span>雾化</span>
+            <input
+              type="range"
+              aria-label="雾化程度"
+              min="0"
+              max="100"
+              step="1"
+              value={fog}
+              onChange={(e) => setFog(Number(e.target.value))}
+            />
+            <output aria-hidden="true">{fog}%</output>
+          </label>
+          {selectedSlot && (
+            <button
+              className="icon-button"
+              aria-label="收起已选卡片"
+              onClick={clearSelection}
+            >
+              <X size={17} />
+            </button>
+          )}
           <button
             className="icon-button"
             aria-label="回到起点"
@@ -438,6 +460,7 @@ export default function Wall() {
             className="icon-button"
             aria-label="开启新的探索"
             onClick={() => {
+              clearSelection();
               refreshFeed();
               camera.current = { x: 50, y: 112 };
               paint();

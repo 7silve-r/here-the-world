@@ -10,6 +10,7 @@ type Memory = {
   hasMore: boolean;
   loaded: boolean;
   focus: string | null;
+  selectedSlot: string | null;
   expired: boolean;
   error: string | null;
   feedSession: FeedPage["feedSession"] | null;
@@ -26,6 +27,7 @@ function initial(): Memory {
     hasMore: true,
     loaded: false,
     focus: null,
+    selectedSlot: null,
     expired: false,
     error: null,
     feedSession: null,

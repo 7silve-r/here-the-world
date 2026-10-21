@@ -353,7 +353,7 @@ a.button {
   height: calc(100dvh - var(--header));
   min-height: 420px;
   position: relative;
-  overflow: hidden;
+  overflow: clip;
   touch-action: none;
   cursor: grab;
   background: #dedfd5;
@@ -417,9 +417,33 @@ a.button {
     filter 0.4s;
   filter: saturate(0.83);
 }
-.wall-tile.previewing .artwork > img,
 .grid-card:hover .artwork > img {
   transform: scale(1.035);
+  filter: saturate(1);
+}
+.wall-tile .artwork {
+  filter: blur(var(--wall-fog-blur, 1.08px))
+    brightness(var(--wall-fog-brightness, 0.901))
+    saturate(var(--wall-fog-saturation, 0.775));
+  transition: filter 180ms ease;
+}
+.wall-tile .artwork::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  opacity: var(--wall-fog-opacity, 0.225);
+  pointer-events: none;
+  z-index: 3;
+  transition: opacity 180ms ease;
+}
+.wall-tile:is(:hover, :focus-visible, .is-selected) .artwork {
+  filter: none;
+}
+.wall-tile:is(:hover, :focus-visible, .is-selected) .artwork::before {
+  opacity: 0;
+}
+.wall-tile:is(:hover, :focus-visible, .is-selected) .artwork > img {
   filter: saturate(1);
 }
 .artwork:after {
@@ -713,6 +737,33 @@ a.button {
   align-items: center;
   gap: 12px;
   pointer-events: auto;
+}
+.fog-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--paper);
+  font-size: 10px;
+  color: var(--muted);
+  cursor: default;
+}
+.fog-control input {
+  width: 75px;
+  margin: 0;
+  accent-color: var(--green);
+  cursor: pointer;
+}
+.fog-control input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+.fog-control output {
+  width: 28px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 .drag-instruction {
   font-size: 10px;
@@ -1745,6 +1796,18 @@ a.button {
   }
   .wall-tools {
     gap: 3px;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .wall-bottom {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .wall-tools .fog-control {
+    margin-right: 8px;
+  }
+  .wall-tools .touch-instruction {
+    bottom: 112px;
   }
   .wall-tools .icon-button {
     width: 31px;
