@@ -21,7 +21,10 @@
     </properties>
 
     <modules>
-
+        <module>common</module>
+        <module>infrastructure</module>
+        <module>business</module>
+        <module>app</module>
     </modules>
 
     <dependencyManagement>
