@@ -1,0 +1,5 @@
+src/api/generated.ts
+node_modules
+dist
+public/media
+package-lock.json
