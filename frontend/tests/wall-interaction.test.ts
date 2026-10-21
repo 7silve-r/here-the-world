@@ -25,8 +25,8 @@ describe("click-only wall expansion", () => {
       "--wall-fog-saturation": 1,
     });
     expect(fogStyle(100)).toMatchObject({
-      "--wall-fog-blur": "2.4px",
-      "--wall-fog-opacity": 0.5,
+      "--wall-fog-blur": "10px",
+      "--wall-fog-opacity": 1,
     });
   });
 });

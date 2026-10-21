@@ -116,6 +116,7 @@ function Block({
                 return;
               }
               if (!w) return;
+              e.currentTarget.focus({ preventScroll: true });
               wallMemory.focus = slot.key;
               onActivate(w.id, slot.key);
             }}
@@ -312,15 +313,21 @@ export default function Wall() {
     const p = pointer.current;
     if (!p || p.id !== e.pointerId) return;
     if (dragging.current) {
-      blockedUntil.current = performance.now() + 350;
+      if (e.type === "pointerup") {
+        camera.current = {
+          x: p.cx + e.clientX - p.x,
+          y: p.cy + e.clientY - p.y,
+        };
+        paint();
+      }
+      blockedUntil.current = performance.now() + 180;
       setMoving(false);
     }
     pointer.current = null;
-    viewport.current?.releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture(e.pointerId))
+      e.currentTarget.releasePointerCapture(e.pointerId);
     saveWall();
-    setTimeout(() => {
-      dragging.current = false;
-    }, 0);
+    dragging.current = false;
   };
   return (
     <main
@@ -328,6 +335,7 @@ export default function Wall() {
       ref={viewport}
       aria-label="可向四个方向拖动的作品墙"
       style={fogStyle(fog)}
+      onDragStartCapture={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         if (e.key === "Escape") clearSelection();
       }}
@@ -355,6 +363,13 @@ export default function Wall() {
       }}
       onPointerDown={(e) => {
         if (e.button !== 0 || e.isPrimary === false) return;
+        const element = e.target as HTMLElement;
+        if (element.closest(".wall-tools, .wall-notice")) return;
+        // Keep native image dragging and text selection from stealing the gesture.
+        e.preventDefault();
+        const owner =
+          element.closest<HTMLElement>(".wall-tile") || e.currentTarget;
+        owner.setPointerCapture(e.pointerId);
         pointer.current = {
           id: e.pointerId,
           x: e.clientX,
@@ -369,9 +384,10 @@ export default function Wall() {
         if (!p || p.id !== e.pointerId) return;
         const dx = e.clientX - p.x,
           dy = e.clientY - p.y;
-        if (!dragging.current && Math.hypot(dx, dy) > 7) {
+        if (!dragging.current && Math.hypot(dx, dy) > 6) {
           dragging.current = true;
           setMoving(true);
+          // The viewport stays mounted while cards are clipped during a long pan.
           viewport.current!.setPointerCapture(e.pointerId);
         }
         if (dragging.current) {
@@ -381,6 +397,9 @@ export default function Wall() {
       }}
       onPointerUp={finish}
       onPointerCancel={finish}
+      onLostPointerCapture={(e) => {
+        if (e.target === e.currentTarget) finish(e);
+      }}
       onClickCapture={(e) => {
         if (performance.now() < blockedUntil.current) {
           e.preventDefault();

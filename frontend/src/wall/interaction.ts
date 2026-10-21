@@ -15,9 +15,9 @@ export function readFogLevel(value: string | null) {
 export function fogStyle(level: number): CSSProperties {
   const amount = readFogLevel(String(level)) / 100;
   return {
-    "--wall-fog-blur": `${amount * 2.4}px`,
-    "--wall-fog-opacity": amount * 0.5,
-    "--wall-fog-brightness": 1 - amount * 0.22,
-    "--wall-fog-saturation": 1 - amount * 0.5,
+    "--wall-fog-blur": `${amount * 10}px`,
+    "--wall-fog-opacity": amount,
+    "--wall-fog-brightness": 1 - amount * 0.48,
+    "--wall-fog-saturation": 1 - amount * 0.6,
   } as CSSProperties;
 }

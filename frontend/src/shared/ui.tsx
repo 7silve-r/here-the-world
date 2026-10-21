@@ -342,6 +342,7 @@ export function Artwork({
       {work.cover && !failed ? (
         <img
           src={imageUrl}
+          draggable={false}
           alt=""
           loading={priority ? "eager" : "lazy"}
           decoding="async"

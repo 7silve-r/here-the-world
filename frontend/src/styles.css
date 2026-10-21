@@ -358,6 +358,18 @@ a.button {
   cursor: grab;
   background: #dedfd5;
   isolation: isolate;
+  user-select: none;
+  -webkit-user-select: none;
+  overscroll-behavior: none;
+}
+.wall-world img,
+.wall-world svg {
+  -webkit-user-drag: none;
+}
+.wall-tile .artwork,
+.wall-tile .open-hint,
+.wall-tile .material-label {
+  pointer-events: none;
 }
 .wall.is-dragging,
 .wall.is-dragging button {
@@ -387,7 +399,7 @@ a.button {
   overflow: hidden;
   background: #d0d5c6;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: grab;
   isolation: isolate;
   contain: layout paint;
 }
@@ -422,20 +434,40 @@ a.button {
   filter: saturate(1);
 }
 .wall-tile .artwork {
-  filter: blur(var(--wall-fog-blur, 1.08px))
-    brightness(var(--wall-fog-brightness, 0.901))
-    saturate(var(--wall-fog-saturation, 0.775));
-  transition: filter 180ms ease;
+  filter: brightness(var(--wall-fog-brightness, 0.784))
+    saturate(var(--wall-fog-saturation, 0.73));
+  transition: filter 240ms ease;
 }
 .wall-tile .artwork::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: var(--paper);
-  opacity: var(--wall-fog-opacity, 0.225);
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    transparent 20%,
+    #10151b40 60%,
+    #090d14cc 100%
+  );
+  backdrop-filter: blur(var(--wall-fog-blur, 4.5px));
+  -webkit-backdrop-filter: blur(var(--wall-fog-blur, 4.5px));
+  mask-image: radial-gradient(
+    ellipse at 50% 45%,
+    transparent 15%,
+    #0003 40%,
+    #000a 70%,
+    #000 100%
+  );
+  -webkit-mask-image: radial-gradient(
+    ellipse at 50% 45%,
+    transparent 15%,
+    #0003 40%,
+    #000a 70%,
+    #000 100%
+  );
+  opacity: var(--wall-fog-opacity, 0.45);
   pointer-events: none;
   z-index: 3;
-  transition: opacity 180ms ease;
+  transition: opacity 240ms ease;
 }
 .wall-tile:is(:hover, :focus-visible, .is-selected) .artwork {
   filter: none;
@@ -2081,6 +2113,75 @@ a.button {
   .poem .quote-mark {
     top: 20px;
   }
+}
+:root:has(.wall) {
+  --paper: #101419;
+  --surface: #171d24;
+  --ink: #e0e6e8;
+  --muted: #89959e;
+  --line: #2a333d;
+  --green: #9abbb1;
+  --accent: #d7a677;
+  color: var(--ink);
+  background: var(--paper);
+  color-scheme: dark;
+}
+:root:has(.wall) .wall {
+  background: #0b0f14;
+}
+:root:has(.wall) .wall-topline {
+  color: #83929e;
+  background: linear-gradient(#101419f5, #101419a6 55%, transparent);
+}
+:root:has(.wall) .wall-bottom {
+  background: linear-gradient(0deg, #101419 0%, #101419eb 38%, #10141900 100%);
+}
+:root:has(.wall) .material-tile {
+  background: #141b23;
+  border-color: #202b35;
+  color: #596a77;
+}
+.wall .wall-tile {
+  background: #18222b;
+  box-shadow: inset 0 0 0 1px #dbe6f10a;
+  transition: box-shadow 240ms ease;
+}
+.wall .wall-tile:is(:hover, :focus-visible, .is-selected) {
+  box-shadow:
+    0 0 0 1px #dce8e02e,
+    0 10px 36px #0005,
+    0 0 25px #b6c8dd12;
+}
+.wall .wall-tile .poem {
+  background: #29313b;
+  color: #d7d4ca;
+}
+.wall .wall-tile .art-text::after {
+  background: linear-gradient(0deg, #252d38 0%, transparent 65%);
+}
+.wall .wall-tile .art-text .card-caption {
+  color: #d6d9d7;
+}
+.wall .wall-tile .art-text .kind-badge {
+  color: #aab7bf;
+  border-color: #81929e44;
+}
+.wall .wall-tile .quote-mark {
+  color: #8597a3;
+}
+.wall .drag-instruction,
+.wall .touch-instruction,
+.wall .explore-label > strong > span {
+  color: #94a0aa;
+}
+:root:has(.wall) .avatar {
+  background: #27343b;
+  border-color: #40515a;
+  color: #c4d9d2;
+}
+:root:has(.wall) .icon-button:hover,
+:root:has(.wall) .nav-links a:is(:hover, .active) {
+  background: #242e39;
 }
 .touch-instruction {
   display: none;
