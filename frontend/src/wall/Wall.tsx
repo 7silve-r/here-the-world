@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUpRight, Expand, Move, RotateCcw, X } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import {
   BLOCK_HEIGHT,
   BLOCK_WIDTH,
@@ -30,9 +30,14 @@ import {
   subscribeFeed,
   wallMemory,
 } from "../feed/provider";
-import { Artwork, Button, Notice, useNavigation } from "../shared/ui";
+import { Artwork } from "../shared/ui";
 import { useReducedMotion } from "../shared/hooks";
-import { activateSlot, fogStyle, readFogLevel } from "./interaction";
+import {
+  activateSlot,
+  fogStyle,
+  useWallFog,
+  type WallAction,
+} from "./interaction";
 
 function Block({
   column,
@@ -42,7 +47,6 @@ function Block({
   onClear,
   dragging,
   reduced,
-  shift,
 }: {
   column: number;
   row: number;
@@ -51,7 +55,6 @@ function Block({
   onClear: () => void;
   dragging: React.RefObject<boolean>;
   reduced: boolean;
-  shift: number;
 }) {
   const elements = useRef<(HTMLButtonElement | null)[]>([]),
     director = useRef<MotionDirector | null>(null);
@@ -84,7 +87,7 @@ function Block({
       className="wall-block"
       data-block={`${column},${row}`}
       style={{
-        transform: `translate(${column * BLOCK_WIDTH + shift}px,${row * BLOCK_HEIGHT}px)`,
+        transform: `translate(${column * BLOCK_WIDTH}px,${row * BLOCK_HEIGHT}px)`,
       }}
     >
       {slots.map((slot, i) => {
@@ -166,12 +169,7 @@ function Block({
           >
             {w ? (
               <Artwork work={w} priority={column === 0 && row === 0} />
-            ) : (
-              <span className="material-label">
-                {wallMemory.hasMore ? "正在发现…" : "世界还有留白"}
-                <span>HERE / ELSEWHERE</span>
-              </span>
-            )}
+            ) : null}
             {w && target === i && (
               <span className="open-hint">
                 再次点击，进入详情 <ArrowUpRight size={14} />
@@ -187,7 +185,6 @@ function Block({
 export default function Wall() {
   useSyncExternalStore(subscribeFeed, feedSnapshot);
   const navigate = useNavigate(),
-    { open } = useNavigation(),
     reduced = useReducedMotion();
   const world = useRef<HTMLDivElement>(null),
     viewport = useRef<HTMLDivElement>(null),
@@ -210,11 +207,9 @@ export default function Wall() {
     [clip, setClip] = useState({ ...camera.current }),
     [moving, setMoving] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(
-      wallMemory.selectedSlot,
-    ),
-    [fog, setFog] = useState(() =>
-      readFogLevel(localStorage.getItem("htw.wall.fog")),
-    );
+    wallMemory.selectedSlot,
+  );
+  const [fog] = useWallFog();
   const selection = useRef(selectedSlot);
   const clearSelection = () => {
     selection.current = null;
@@ -230,9 +225,6 @@ export default function Wall() {
     saveWall();
     if (next.open) navigate(`/works/${encodeURIComponent(id)}`);
   };
-  useEffect(() => {
-    localStorage.setItem("htw.wall.fog", String(fog));
-  }, [fog]);
   const scale = size.width < 640 ? 0.62 : size.width < 1000 ? 0.8 : 1;
   const blocks = useMemo(
     () => visibleBlocks(clip, size, scale),
@@ -309,6 +301,23 @@ export default function Wall() {
     }
     return () => cancelFeed();
   }, []);
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const action = (event as CustomEvent<WallAction>).detail;
+      if (action === "clear" || action === "explore") clearSelection();
+      if (action === "center" || action === "explore") {
+        camera.current = { x: 50, y: 112 };
+        paint();
+      }
+      if (action === "explore" || (action === "retry" && wallMemory.expired)) {
+        refreshFeed();
+        if (action === "explore") setClip({ ...camera.current });
+        else discoverSlots(orderedSlots);
+      } else if (action === "retry") void loadFeed();
+    };
+    window.addEventListener("htw:wall-action", listener);
+    return () => window.removeEventListener("htw:wall-action", listener);
+  }, [orderedSlots, paint]);
   const finish = (e: React.PointerEvent) => {
     const p = pointer.current;
     if (!p || p.id !== e.pointerId) return;
@@ -331,7 +340,7 @@ export default function Wall() {
   };
   return (
     <main
-      className={`wall ${moving ? "is-dragging" : ""} ${open ? "nav-open" : ""}`}
+      className={`wall ${moving ? "is-dragging" : ""}`}
       ref={viewport}
       aria-label="可向四个方向拖动的作品墙"
       style={fogStyle(fog)}
@@ -351,8 +360,8 @@ export default function Wall() {
         else if (rect.right > bounds.right - 12)
           dx = bounds.right - 12 - rect.right;
         if (rect.top < bounds.top + 60) dy = bounds.top + 60 - rect.top;
-        else if (rect.bottom > bounds.bottom - 85)
-          dy = bounds.bottom - 85 - rect.bottom;
+        else if (rect.bottom > bounds.bottom - 12)
+          dy = bounds.bottom - 12 - rect.bottom;
         if (dx || dy) {
           camera.current = {
             x: camera.current.x + dx,
@@ -364,7 +373,6 @@ export default function Wall() {
       onPointerDown={(e) => {
         if (e.button !== 0 || e.isPrimary === false) return;
         const element = e.target as HTMLElement;
-        if (element.closest(".wall-tools, .wall-notice")) return;
         // Keep native image dragging and text selection from stealing the gesture.
         e.preventDefault();
         const owner =
@@ -413,7 +421,6 @@ export default function Wall() {
             key={b.key}
             column={b.column}
             row={b.row}
-            shift={open ? (b.column < 0 ? -320 : 320) : 0}
             dragging={dragging}
             reduced={reduced}
             selectedSlot={selectedSlot}
@@ -422,96 +429,6 @@ export default function Wall() {
           />
         ))}
       </div>
-      <div className="wall-topline" aria-hidden="true">
-        <span>THE WORLD IS AN OPEN CANVAS</span>
-        <span>
-          随心游走，自在相遇 <span className="tiny-cross">＋</span>
-        </span>
-      </div>
-      <div className="wall-bottom">
-        <div className="explore-label">
-          <span className="eyebrow">YOUR DAILY DOSE OF ELSEWHERE</span>
-          <strong>
-            不设边界，只管好奇。<span>Explore the unexpected.</span>
-          </strong>
-        </div>
-        <div className="wall-tools">
-          <span className="touch-instruction">点按展开，再点进入详情</span>
-          <span className="drag-instruction">
-            <Move size={14} /> 悬停提亮 · 点击展开 · 再点进入
-          </span>
-          <label
-            className="fog-control"
-            onPointerDown={(e) => e.stopPropagation()}
-          >
-            <span>雾化</span>
-            <input
-              type="range"
-              aria-label="雾化程度"
-              min="0"
-              max="100"
-              step="1"
-              value={fog}
-              onChange={(e) => setFog(Number(e.target.value))}
-            />
-            <output aria-hidden="true">{fog}%</output>
-          </label>
-          {selectedSlot && (
-            <button
-              className="icon-button"
-              aria-label="收起已选卡片"
-              onClick={clearSelection}
-            >
-              <X size={17} />
-            </button>
-          )}
-          <button
-            className="icon-button"
-            aria-label="回到起点"
-            onClick={() => {
-              camera.current = { x: 50, y: 112 };
-              paint();
-            }}
-          >
-            <Expand size={18} />
-          </button>
-          <button
-            className="icon-button"
-            aria-label="开启新的探索"
-            onClick={() => {
-              clearSelection();
-              refreshFeed();
-              camera.current = { x: 50, y: 112 };
-              paint();
-              discoverSlots(orderedSlots);
-            }}
-          >
-            <RotateCcw size={16} />
-          </button>
-        </div>
-      </div>
-      {(wallMemory.expired || wallMemory.error) && (
-        <div className="wall-notice">
-          <Notice
-            message={
-              wallMemory.expired
-                ? "这次探索已过期，当前画面已为你保留。"
-                : undefined
-            }
-            error={wallMemory.error ? new Error(wallMemory.error) : undefined}
-          />
-          <Button
-            onClick={() => {
-              if (wallMemory.expired) {
-                refreshFeed();
-                discoverSlots(orderedSlots);
-              } else void loadFeed();
-            }}
-          >
-            {wallMemory.expired ? "开始新的探索" : "重试"}
-          </Button>
-        </div>
-      )}
     </main>
   );
 }

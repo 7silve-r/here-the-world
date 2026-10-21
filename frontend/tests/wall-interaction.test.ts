@@ -14,8 +14,8 @@ describe("click-only wall expansion", () => {
     expect(activateSlot(null, next.selectedSlot).open).toBe(false);
   });
   it("normalizes the local-only fog setting and supports turning it fully off", () => {
-    expect(readFogLevel(null)).toBe(45);
-    expect(readFogLevel("invalid")).toBe(45);
+    expect(readFogLevel(null)).toBe(100);
+    expect(readFogLevel("invalid")).toBe(100);
     expect(readFogLevel("-20")).toBe(0);
     expect(readFogLevel("120")).toBe(100);
     expect(fogStyle(0)).toMatchObject({

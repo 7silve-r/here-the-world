@@ -26,6 +26,14 @@ function Scroll() {
   }, [location.pathname]);
   return null;
 }
+function SkipLink() {
+  if (useLocation().pathname === "/") return null;
+  return (
+    <a className="skip-link" href="#content">
+      跳到内容
+    </a>
+  );
+}
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -33,9 +41,7 @@ export default function App() {
         <NavigationProvider>
           <Scroll />
           <PreferencesSync />
-          <a className="skip-link" href="#content">
-            跳到内容
-          </a>
+          <SkipLink />
           <Header />
           <Navigation />
           <div id="content">

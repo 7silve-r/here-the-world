@@ -4,6 +4,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ButtonHTMLAttributes,
   type ReactNode,
 } from "react";
@@ -30,6 +31,8 @@ import {
 import type { WorkCard } from "../api/generated";
 import { api, ApiError, clearSession, mockMode } from "../api/client";
 import { useAuth } from "./hooks";
+import { requestWallAction, useWallFog } from "../wall/interaction";
+import { feedSnapshot, subscribeFeed, wallMemory } from "../feed/provider";
 const navContext = createContext({
   open: false,
   setOpen: (_value: boolean) => {},
@@ -175,19 +178,24 @@ export function Page({
 }
 export function Header() {
   const { open, setOpen } = useNavigation(),
-    { session } = useAuth();
+    { session } = useAuth(),
+    isWall = useLocation().pathname === "/";
+  const menuButton = (
+    <button
+      className={`icon-button menu-button ${isWall ? "floating-navigation-toggle" : ""}`}
+      aria-expanded={open}
+      aria-controls="main-navigation"
+      aria-label={open ? "收起导航" : "展开导航"}
+      onClick={() => setOpen(!open)}
+    >
+      {open ? <X size={18} /> : <Menu size={18} />}
+    </button>
+  );
+  if (isWall) return menuButton;
   return (
     <header className="header">
       <div className="brand-group">
-        <button
-          className="icon-button menu-button"
-          aria-expanded={open}
-          aria-controls="main-navigation"
-          aria-label={open ? "收起导航" : "展开导航"}
-          onClick={() => setOpen(!open)}
-        >
-          {open ? <X size={19} /> : <Menu size={19} />}
-        </button>
+        {menuButton}
         <Link to="/" className="brand">
           <span className="brand-symbol">
             h<span>∙</span>
@@ -231,6 +239,8 @@ export function Navigation() {
     { session } = useAuth(),
     location = useLocation();
   const [error, setError] = useState<unknown>();
+  const [fog, setFog] = useWallFog();
+  useSyncExternalStore(subscribeFeed, feedSnapshot);
   if (!open) return null;
   const links = [
     ["/", "探索世界", Compass],
@@ -294,6 +304,49 @@ export function Navigation() {
         )}
         <Notice error={error} />
       </div>
+      {location.pathname === "/" && (
+        <div className="navigation-wall-controls">
+          <label className="fog-control">
+            <span>雾化</span>
+            <input
+              type="range"
+              aria-label="雾化程度"
+              min="0"
+              max="100"
+              step="1"
+              value={fog}
+              onChange={(e) => setFog(Number(e.target.value))}
+            />
+            <output aria-hidden="true">{fog}%</output>
+          </label>
+          <div className="navigation-wall-actions">
+            <Button onClick={() => requestWallAction("center")}>
+              回到起点
+            </Button>
+            <Button onClick={() => requestWallAction("explore")}>
+              重新探索
+            </Button>
+            <Button onClick={() => requestWallAction("clear")}>收起卡片</Button>
+          </div>
+          {(wallMemory.expired || wallMemory.error) && (
+            <>
+              <Notice
+                message={
+                  wallMemory.expired
+                    ? "这次探索已过期，当前画面已为你保留。"
+                    : undefined
+                }
+                error={
+                  wallMemory.error ? new Error(wallMemory.error) : undefined
+                }
+              />
+              <Button onClick={() => requestWallAction("retry")}>
+                重新加载探索
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </nav>
   );
 }

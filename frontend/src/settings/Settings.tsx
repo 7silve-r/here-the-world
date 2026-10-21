@@ -10,7 +10,7 @@ import { Button, Notice, Page } from "../shared/ui";
 import { Field, Textarea, passwordValid, text } from "../shared/forms";
 import UploadField from "../publishing/UploadField";
 const defaults: Preferences = {
-  theme: "SYSTEM",
+  theme: "DARK",
   motion: "SYSTEM",
   autoPlayMedia: false,
 };
@@ -26,7 +26,7 @@ export function localPreferences(): Preferences {
 }
 export function applyPreferences(value: Preferences) {
   const root = document.documentElement;
-  root.dataset.theme = value.theme;
+  root.dataset.theme = "DARK";
   root.dataset.motion = value.motion;
   window.dispatchEvent(new Event("htw:preferences"));
 }
@@ -59,7 +59,10 @@ export default function Settings() {
     queryKey: ["capabilities"],
     queryFn: ({ signal }) => api("getCapabilities", undefined, { signal }),
   });
-  const [preferences, setPreferences] = useState(localPreferences),
+  const [preferences, setPreferences] = useState(() => ({
+      ...localPreferences(),
+      theme: "DARK" as const,
+    })),
     [displayName, setDisplayName] = useState(""),
     [bio, setBio] = useState(""),
     [avatars, setAvatars] = useState<Asset[]>([]),
@@ -73,7 +76,7 @@ export default function Settings() {
     setBio(me.data?.bio || "");
   }, [me.data]);
   useEffect(() => {
-    setPreferences(settings.data || localPreferences());
+    setPreferences({ ...(settings.data || localPreferences()), theme: "DARK" });
   }, [settings.data, session?.user.id]);
   useEffect(() => {
     setAvatars([]);
@@ -250,20 +253,7 @@ export default function Settings() {
                   <Palette size={15} />
                   界面主题
                 </span>
-                <select
-                  aria-label="界面主题"
-                  value={preferences.theme}
-                  onChange={(e) =>
-                    setPreferences({
-                      ...preferences,
-                      theme: e.target.value as Preferences["theme"],
-                    })
-                  }
-                >
-                  <option value="SYSTEM">跟随系统</option>
-                  <option value="LIGHT">浅色 · 日光</option>
-                  <option value="DARK">深色 · 夜色</option>
-                </select>
+                <input aria-label="界面主题" value="深色 · 夜色" readOnly />
               </label>
               <label className="field">
                 <span>动态效果</span>
