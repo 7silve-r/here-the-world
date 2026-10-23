@@ -3,7 +3,7 @@ package com.silver.backend.common;
 import java.util.List;
 
 public class ApiException extends RuntimeException{
-    private record Detail(String field, String reason, String message){}
+    public record Detail(String field, String reason, String message){}
 
     private final int status;
     private final String code;
