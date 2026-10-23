@@ -29,8 +29,8 @@ export class MotionDirector {
     }
     const tick = (now: number) => {
       if (id !== this.generation) return;
-      const p = Math.min(1, (now - start) / 360),
-        t = 1 - (1 - p) ** 3;
+      const p = Math.min(1, (now - start) / 420),
+        t = 1 - (1 - p) ** 3.4;
       this.current = target.map((r, i) => interpolate(from[i], r, t));
       this.commit(this.current);
       if (p < 1) this.frame = requestAnimationFrame(tick);

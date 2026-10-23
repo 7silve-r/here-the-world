@@ -1,16 +1,25 @@
-import { useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useId, useState } from "react";
+import { m } from "motion/react";
+import {
+  useInfiniteQuery,
+  useQuery,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { ArrowUpRight, Plus } from "lucide-react";
 import { api } from "../api/client";
 import { Empty, Loading, More, Notice, Page, WorkGrid } from "../shared/ui";
-import type { WorkCard } from "../api/generated";
+import type { WorkCard, WorkPage } from "../api/generated";
+import { Reveal } from "../shared/animation";
+import { useReducedMotion } from "../shared/hooks";
 export default function Lists() {
   const { userId = "" } = useParams(),
     location = useLocation(),
     isUser = location.pathname.startsWith("/users/"),
     isBookmarks = location.pathname === "/me/bookmarks";
   const [status, setStatus] = useState("");
+  const tabId = useId();
+  const reduced = useReducedMotion();
   const user = useQuery({
     queryKey: ["user", userId],
     queryFn: ({ signal }) =>
@@ -20,6 +29,8 @@ export default function Lists() {
   const list = useInfiniteQuery({
     queryKey: ["list", location.pathname, status],
     initialPageParam: undefined as string | undefined,
+    placeholderData: (previous: InfiniteData<WorkPage> | undefined, query) =>
+      query?.queryKey[1] === location.pathname ? previous : undefined,
     queryFn: ({ pageParam, signal }) =>
       api(
         isUser
@@ -31,7 +42,7 @@ export default function Lists() {
         {
           params: { userId },
           query: {
-            cursor: pageParam,
+            cursor: pageParam as string | undefined,
             limit: 24,
             status: !isUser && !isBookmarks && status ? status : undefined,
           },
@@ -47,23 +58,16 @@ export default function Lists() {
   ] as WorkCard[];
   return (
     <Page
-      eyebrow={
-        isUser
-          ? "A SMALL WORLD"
-          : isBookmarks
-            ? "KEEP A LITTLE WONDER"
-            : "YOUR CREATIVE SPACE"
-      }
       title={
         isUser
-          ? user.data?.displayName || "一个小世界"
+          ? user.data?.displayName || "个人主页"
           : isBookmarks
-            ? "把喜欢，留在身边。"
-            : "你的每一种看见。"
+            ? "我的收藏"
+            : "我的作品"
       }
     >
       {isUser && user.data && (
-        <div className="profile-intro">
+        <Reveal className="profile-intro" delay={0.06}>
           <span className="avatar large">
             {user.data.avatarUrl ? (
               <img src={user.data.avatarUrl} alt="用户头像" />
@@ -77,7 +81,7 @@ export default function Lists() {
             </p>
             <p>{user.data.bio}</p>
           </div>
-        </div>
+        </Reveal>
       )}
       {!isUser && !isBookmarks && (
         <div className="list-toolbar">
@@ -92,9 +96,21 @@ export default function Lists() {
               <button
                 key={v}
                 className={status === v ? "active" : ""}
+                aria-pressed={status === v}
                 onClick={() => setStatus(v)}
               >
                 {label}
+                {status === v && (
+                  <m.span
+                    className="tab-indicator"
+                    layoutId={tabId}
+                    transition={
+                      reduced
+                        ? { duration: 0 }
+                        : { type: "spring", stiffness: 420, damping: 35 }
+                    }
+                  />
+                )}
               </button>
             ))}
           </div>
@@ -104,7 +120,6 @@ export default function Lists() {
           </Link>
         </div>
       )}
-      {isBookmarks && <p className="section-intro">有些相遇，值得再看一眼。</p>}
       <Notice error={user.error || list.error} />
       {list.isPending ? (
         <Loading />
@@ -115,7 +130,7 @@ export default function Lists() {
           <Empty>
             还没有作品。
             <Link to="/publish">
-              留下第一件 <ArrowUpRight size={14} />
+              发布作品 <ArrowUpRight size={14} />
             </Link>
           </Empty>
         )

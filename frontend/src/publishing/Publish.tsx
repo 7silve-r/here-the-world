@@ -175,7 +175,7 @@ export default function Publish() {
         setCurrent(w);
         setMessage(
           w.status === "PUBLISHED"
-            ? "作品已发布，世界多了一种看见。"
+            ? "作品已发布。"
             : "已提交，作品正在处理中。",
         );
       } else setMessage("草稿已保存。");
@@ -195,7 +195,7 @@ export default function Publish() {
   if (!loaded || capabilities.isPending) return <Loading />;
   if (workId && (!current || !current.viewer.isOwner))
     return (
-      <Page eyebrow="YOUR CREATIVE SPACE" title="暂时无法管理这件作品。">
+      <Page title="无法管理作品">
         <Notice
           error={error}
           message={!error ? "只有作者可以管理自己的作品。" : undefined}
@@ -206,16 +206,7 @@ export default function Publish() {
       </Page>
     );
   return (
-    <Page
-      eyebrow="MAKE A LITTLE WORLD"
-      title={
-        locked
-          ? "你的作品，正在抵达。"
-          : current
-            ? "继续这一刻。"
-            : "让此刻，被世界看见。"
-      }
-    >
+    <Page title={locked ? "发布状态" : current ? "编辑作品" : "发布作品"}>
       <div className="publish-layout">
         <section className="publish-editor">
           <Notice error={error || capabilities.error} message={message} />
@@ -247,9 +238,7 @@ export default function Publish() {
                 <Check size={36} />
               )}
               <h2>
-                {current.status === "PROCESSING"
-                  ? "给作品一点准备的时间。"
-                  : "作品已经出发。"}
+                {current.status === "PROCESSING" ? "作品处理中" : "作品已发布"}
               </h2>
               <p>当前状态：{current.status}</p>
               {current.status === "PUBLISHED" ? (
@@ -328,13 +317,13 @@ export default function Publish() {
                   onChange={(e) =>
                     setInput({ ...input, title: e.target.value })
                   }
-                  placeholder="为这一刻，起个名字"
+                  placeholder="作品标题"
                   required
                   hint={`${Array.from(input.title).length} / ${cap.maxTitleLength}`}
                   error={error}
                 />
                 <Textarea
-                  label={input.kind === "TEXT" ? "正文" : "写在作品旁"}
+                  label={input.kind === "TEXT" ? "正文" : "作品说明"}
                   name="body"
                   value={input.body}
                   onChange={(body) => setInput({ ...input, body })}
@@ -428,37 +417,13 @@ export default function Publish() {
                     busy={busy}
                     disabled={!!conflict || mediaUploading || coverUploading}
                   >
-                    发布这一刻 <ArrowRight size={16} />
+                    发布作品 <ArrowRight size={16} />
                   </Button>
                 </div>
               </form>
             )
           )}
         </section>
-        <aside className="publish-aside">
-          <span className="eyebrow">BE YOURSELF, HERE.</span>
-          <h2>
-            不必盛大，
-            <br />
-            真实就好。
-          </h2>
-          <p>
-            一张照片，一段文字，
-            <br />
-            一首让你停下来的歌。
-          </p>
-          <div className="publish-guidance">
-            <span>01</span>
-            <p>选择一种表达方式</p>
-            <span>02</span>
-            <p>放进属于你的故事</p>
-            <span>03</span>
-            <p>让世界与你相遇</p>
-          </div>
-          <Link to="/me/works">
-            查看我的作品 <ArrowUpRight size={15} />
-          </Link>
-        </aside>
       </div>
     </Page>
   );

@@ -45,7 +45,7 @@ export function fogStyle(level: number): CSSProperties {
   return {
     "--wall-fog-blur": `${amount * 10}px`,
     "--wall-fog-opacity": amount,
-    "--wall-fog-brightness": 1 - amount * 0.48,
-    "--wall-fog-saturation": 1 - amount * 0.6,
+    "--wall-fog-brightness": 1 - amount * 0.24,
+    "--wall-fog-saturation": 1 + amount * 0.18,
   } as CSSProperties;
 }

@@ -3,7 +3,7 @@ import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./api/cache";
 import {
-  Header,
+  NavigationToggle,
   Navigation,
   NavigationProvider,
   Loading,
@@ -12,9 +12,30 @@ import {
 } from "./shared/ui";
 import { Protected } from "./auth/AuthPages";
 import { PreferencesSync } from "./settings/Settings";
+import { MotionSystem, RouteScene } from "./shared/animation";
+import { loadWorkPage, preparedWorkPage } from "./shared/cover-transition";
+import { AmbientDust } from "./shared/atmosphere";
+function PageLight() {
+  return useLocation().pathname === "/" ? null : <AmbientDust backdrop />;
+}
+function NavigationChrome() {
+  if (useLocation().pathname === "/welcome") return null;
+  return (
+    <>
+      <SkipLink />
+      <NavigationToggle />
+      <Navigation />
+    </>
+  );
+}
 const Wall = lazy(() => import("./wall/Wall"));
+const Welcome = lazy(() => import("./welcome/Welcome"));
 const AuthPage = lazy(() => import("./auth/AuthPages"));
-const Detail = lazy(() => import("./works/Detail"));
+const Detail = lazy(loadWorkPage);
+function WorkRoute() {
+  const Component = preparedWorkPage() || Detail;
+  return <Component />;
+}
 const Lists = lazy(() => import("./profile/Lists"));
 const Publish = lazy(() => import("./publishing/Publish"));
 const Settings = lazy(() => import("./settings/Settings"));
@@ -39,74 +60,78 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <NavigationProvider>
-          <Scroll />
-          <PreferencesSync />
-          <SkipLink />
-          <Header />
-          <Navigation />
-          <div id="content">
-            <Suspense fallback={<Loading />}>
-              <Routes>
-                <Route path="/" element={<Wall />} />
-                <Route path="/works/:workId" element={<Detail />} />
-                <Route path="/users/:userId" element={<Lists />} />
-                <Route
-                  path="/me/works"
-                  element={
-                    <Protected>
-                      <Lists />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/me/bookmarks"
-                  element={
-                    <Protected>
-                      <Lists />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/publish"
-                  element={
-                    <Protected>
-                      <Publish />
-                    </Protected>
-                  }
-                />
-                <Route
-                  path="/publish/:workId"
-                  element={
-                    <Protected>
-                      <Publish />
-                    </Protected>
-                  }
-                />
-                <Route path="/settings" element={<Settings />} />
-                {[
-                  "login",
-                  "register",
-                  "verify-email",
-                  "forgot-password",
-                  "reset-password",
-                ].map((path) => (
-                  <Route
-                    key={path}
-                    path={`/${path}`}
-                    element={<AuthPage key={path} />}
-                  />
-                ))}
-                <Route
-                  path="*"
-                  element={
-                    <Page eyebrow="OFF THE MAP" title="走到了地图之外。">
-                      <Empty>这里还没有留下足迹。</Empty>
-                    </Page>
-                  }
-                />
-              </Routes>
-            </Suspense>
-          </div>
+          <MotionSystem>
+            <Scroll />
+            <PreferencesSync />
+            <PageLight />
+            <NavigationChrome />
+            <div id="content">
+              <RouteScene>
+                <Suspense fallback={<Loading />}>
+                  <Routes>
+                    <Route path="/" element={<Wall />} />
+                    <Route path="/welcome" element={<Welcome />} />
+                    <Route path="/works/:workId" element={<WorkRoute />} />
+                    <Route path="/users/:userId" element={<Lists />} />
+                    <Route
+                      path="/me/works"
+                      element={
+                        <Protected>
+                          <Lists />
+                        </Protected>
+                      }
+                    />
+                    <Route
+                      path="/me/bookmarks"
+                      element={
+                        <Protected>
+                          <Lists />
+                        </Protected>
+                      }
+                    />
+                    <Route
+                      path="/publish"
+                      element={
+                        <Protected>
+                          <Publish />
+                        </Protected>
+                      }
+                    />
+                    <Route
+                      path="/publish/:workId"
+                      element={
+                        <Protected>
+                          <Publish />
+                        </Protected>
+                      }
+                    />
+                    <Route path="/settings" element={<Settings />} />
+                    {[
+                      "login",
+                      "register",
+                      "verify-email",
+                      "forgot-password",
+                      "reset-password",
+                    ].map((path) => (
+                      <Route
+                        key={path}
+                        path={`/${path}`}
+                        element={<AuthPage key={path} />}
+                      />
+                    ))}
+                    <Route
+                      path="*"
+                      element={
+                        <Page title="页面不存在">
+                          <Empty>请检查页面地址</Empty>
+                        </Page>
+                      }
+                    />
+                  </Routes>
+                </Suspense>
+              </RouteScene>
+            </div>
+          </MotionSystem>
         </NavigationProvider>
       </BrowserRouter>
     </QueryClientProvider>

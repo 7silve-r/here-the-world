@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { m } from "motion/react";
 import { Link, useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight, Check, LockKeyhole, Palette } from "lucide-react";
 import { api, clearSession, mockMode, updateSessionUser } from "../api/client";
 import type { Asset, Settings as Preferences } from "../api/generated";
 import { queryClient } from "../api/cache";
-import { useAuth } from "../shared/hooks";
+import { useAuth, useReducedMotion } from "../shared/hooks";
 import { Button, Notice, Page } from "../shared/ui";
 import { Field, Textarea, passwordValid, text } from "../shared/forms";
 import UploadField from "../publishing/UploadField";
@@ -43,6 +44,7 @@ export function PreferencesSync() {
   return null;
 }
 export default function Settings() {
+  const reduced = useReducedMotion();
   const { session } = useAuth(),
     navigate = useNavigate();
   const me = useQuery({
@@ -97,22 +99,21 @@ export default function Settings() {
     }
   }
   return (
-    <Page eyebrow="A WORLD THAT FEELS LIKE YOU" title="把这里，调成你的样子。">
+    <Page title="设置">
       <div className="settings-layout">
-        <aside className="settings-index">
-          <a href="#profile">01 个人资料</a>
-          <a href="#preferences">02 展示偏好</a>
-          <a href="#security">03 账号安全</a>
-        </aside>
         <div className="settings-main">
           <Notice
             error={error || me.error || settings.error}
             message={message}
           />
-          <section id="profile" className="settings-section">
-            <h2>
-              个人资料 <span>01 / ABOUT YOU</span>
-            </h2>
+          <m.section
+            id="profile"
+            className="settings-section"
+            initial={reduced ? false : { opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.05 }}
+          >
+            <h2>个人资料</h2>
             {session ? (
               <form
                 onSubmit={(e) => {
@@ -149,7 +150,6 @@ export default function Settings() {
                   </span>
                   <div>
                     <strong>{displayName}</strong>
-                    <p className="muted">用一个名字，让世界记住你。</p>
                   </div>
                 </div>
                 <Field
@@ -213,17 +213,21 @@ export default function Settings() {
               </form>
             ) : (
               <p className="muted">
-                登录后，为你的小世界添加一个名字。
+                登录后可编辑个人资料。
                 <Link to="/login?returnTo=%2Fsettings">
                   前往登录 <ArrowUpRight size={14} />
                 </Link>
               </p>
             )}
-          </section>
-          <section id="preferences" className="settings-section">
-            <h2>
-              展示偏好 <span>02 / YOUR PERSPECTIVE</span>
-            </h2>
+          </m.section>
+          <m.section
+            id="preferences"
+            className="settings-section"
+            initial={reduced ? false : { opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.05 }}
+          >
+            <h2>展示偏好</h2>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -253,7 +257,7 @@ export default function Settings() {
                   <Palette size={15} />
                   界面主题
                 </span>
-                <input aria-label="界面主题" value="深色 · 夜色" readOnly />
+                <input aria-label="界面主题" value="深色" readOnly />
               </label>
               <label className="field">
                 <span>动态效果</span>
@@ -291,11 +295,15 @@ export default function Settings() {
                 保存展示偏好
               </Button>
             </form>
-          </section>
-          <section id="security" className="settings-section">
-            <h2>
-              账号安全 <span>03 / KEEP IT YOURS</span>
-            </h2>
+          </m.section>
+          <m.section
+            id="security"
+            className="settings-section"
+            initial={reduced ? false : { opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.05 }}
+          >
+            <h2>账号安全</h2>
             {session ? (
               <form
                 onSubmit={(e) => {
@@ -341,7 +349,7 @@ export default function Settings() {
                 登录以管理账号安全 <ArrowUpRight size={14} />
               </Link>
             )}
-          </section>
+          </m.section>
           {mockMode && (
             <details className="mock-controls">
               <summary>开发演示 · 异常场景</summary>
