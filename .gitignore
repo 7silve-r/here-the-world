@@ -1,1 +1,79 @@
+# =========================
+# 系统临时文件
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+
+# =========================
+# 编辑器本机配置
+# =========================
+**/.idea/
+*.iml
+*.ipr
+*.iws
+**/.vscode/
+.history/
+
+# =========================
+# 前端依赖与构建产物
+# =========================
+**/node_modules/
+**/dist/
+**/.vite/
+**/*.tsbuildinfo
+**/__pycache__/
+**/*.py[cod]
+
+# =========================
+# Java / Maven 构建产物
+# =========================
+**/target/
+*.class
+
+# =========================
+# 本地环境变量与机密配置
+# =========================
+**/.env
+**/.env.*
+!**/.env.example
+
+**/application-local.yml
+**/application-local.yaml
+**/application-local.properties
+**/application-secrets.yml
+**/application-secrets.yaml
+**/application-secrets.properties
+
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+
+# =========================
+# 日志与本地运行数据
+# =========================
+*.log
+**/logs/
+/runtime/
+**/uploads/
+
+# =========================
+# 测试运行结果
+# 保留测试源码，仅忽略生成结果
+# =========================
+**/coverage/
+**/test-results/
+**/playwright-report/
+
+# =========================
+# 文档
+# =========================
+*.md
 .reference/
+docs/
+backend-reference/
