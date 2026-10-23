@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  type CSSProperties,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUpRight } from "lucide-react";
@@ -32,12 +33,17 @@ import {
 } from "../feed/provider";
 import { Artwork } from "../shared/ui";
 import { useReducedMotion } from "../shared/hooks";
+import { AmbientDust, pulseLight, type Drift } from "../shared/atmosphere";
+import { prepareWork, transitionRoute } from "../shared/cover-transition";
+import { glideFinished, glideOffset } from "./inertia";
 import {
   activateSlot,
   fogStyle,
   useWallFog,
   type WallAction,
 } from "./interaction";
+
+let wallEntered = false;
 
 function Block({
   column,
@@ -47,6 +53,7 @@ function Block({
   onClear,
   dragging,
   reduced,
+  pendingSlot,
 }: {
   column: number;
   row: number;
@@ -55,6 +62,7 @@ function Block({
   onClear: () => void;
   dragging: React.RefObject<boolean>;
   reduced: boolean;
+  pendingSlot: string | null;
 }) {
   const elements = useRef<(HTMLButtonElement | null)[]>([]),
     director = useRef<MotionDirector | null>(null);
@@ -100,6 +108,7 @@ function Block({
             }}
             key={slot.key}
             data-slot={slot.key}
+            style={{ "--arrival-delay": `${i * 16}ms` } as CSSProperties}
             className={`wall-tile ${target === i ? "previewing is-selected" : ""} ${w ? "" : "material-tile"}`}
             aria-label={
               w
@@ -109,6 +118,19 @@ function Block({
             tabIndex={w ? 0 : -1}
             aria-hidden={!w}
             aria-pressed={w ? target === i : undefined}
+            aria-busy={pendingSlot === slot.key || undefined}
+            onPointerMove={(e) => {
+              if (reduced || dragging.current || !w) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              e.currentTarget.style.setProperty(
+                "--light-x",
+                `${((e.clientX - rect.left) / rect.width) * 100}%`,
+              );
+              e.currentTarget.style.setProperty(
+                "--light-y",
+                `${((e.clientY - rect.top) / rect.height) * 100}%`,
+              );
+            }}
             onFocus={() => {
               wallMemory.focus = slot.key;
               saveWall();
@@ -119,6 +141,7 @@ function Block({
                 return;
               }
               if (!w) return;
+              if (target !== i) pulseLight(e.currentTarget);
               e.currentTarget.focus({ preventScroll: true });
               wallMemory.focus = slot.key;
               onActivate(w.id, slot.key);
@@ -168,11 +191,16 @@ function Block({
             }}
           >
             {w ? (
-              <Artwork work={w} priority={column === 0 && row === 0} />
+              <Artwork
+                work={w}
+                priority={column === 0 && row === 0}
+                sharedCover={target === i}
+              />
             ) : null}
             {w && target === i && (
               <span className="open-hint">
-                再次点击，进入详情 <ArrowUpRight size={14} />
+                {pendingSlot === slot.key ? "正在进入…" : "再次点击，进入详情"}{" "}
+                <ArrowUpRight size={14} />
               </span>
             )}
           </button>
@@ -196,10 +224,19 @@ export default function Wall() {
       y: number;
       cx: number;
       cy: number;
+      lx: number;
+      ly: number;
+      time: number;
+      vx: number;
+      vy: number;
     } | null>(null),
     raf = useRef(0),
     lastClip = useRef({ x: Infinity, y: Infinity }),
     blockedUntil = useRef(0);
+  const glide = useRef(0);
+  const drift = useRef<Drift>({ x: 0, y: 0, at: 0 });
+  const lastPaint = useRef({ ...camera.current });
+  const opening = useRef<string | null>(null);
   const [size, setSize] = useState({
       width: window.innerWidth,
       height: window.innerHeight,
@@ -210,8 +247,17 @@ export default function Wall() {
     wallMemory.selectedSlot,
   );
   const [fog] = useWallFog();
+  const [intro, setIntro] = useState(() => !wallEntered && !reduced);
+  const [pendingSlot, setPendingSlot] = useState<string | null>(null);
+  useEffect(() => {
+    wallEntered = true;
+    const timer = setTimeout(() => setIntro(false), 720);
+    return () => clearTimeout(timer);
+  }, []);
   const selection = useRef(selectedSlot);
   const clearSelection = () => {
+    opening.current = null;
+    setPendingSlot(null);
     selection.current = null;
     setSelectedSlot(null);
     wallMemory.selectedSlot = null;
@@ -223,7 +269,30 @@ export default function Wall() {
     setSelectedSlot(next.selectedSlot);
     wallMemory.selectedSlot = next.selectedSlot;
     saveWall();
-    if (next.open) navigate(`/works/${encodeURIComponent(id)}`);
+    if (next.open) {
+      if (opening.current === key) return;
+      opening.current = key;
+      setPendingSlot(key);
+      void prepareWork(id)
+        .then(() => {
+          if (
+            viewport.current &&
+            opening.current === key &&
+            selection.current === key
+          )
+            transitionRoute(() => navigate(`/works/${encodeURIComponent(id)}`));
+        })
+        .finally(() => {
+          if (opening.current === key) {
+            opening.current = null;
+            if (viewport.current) setPendingSlot(null);
+          }
+        });
+    } else {
+      opening.current = null;
+      setPendingSlot(null);
+      void prepareWork(id);
+    }
   };
   const scale = size.width < 640 ? 0.62 : size.width < 1000 ? 0.8 : 1;
   const blocks = useMemo(
@@ -252,6 +321,12 @@ export default function Wall() {
   const paint = useCallback(() => {
     raf.current = 0;
     const c = camera.current;
+    drift.current = {
+      x: c.x - lastPaint.current.x,
+      y: c.y - lastPaint.current.y,
+      at: performance.now(),
+    };
+    lastPaint.current = { ...c };
     if (world.current)
       world.current.style.transform = `translate3d(${c.x}px,${c.y}px,0) scale(${scale})`;
     wallMemory.camera = { ...c };
@@ -266,6 +341,46 @@ export default function Wall() {
   const schedule = () => {
     if (!raf.current) raf.current = requestAnimationFrame(paint);
   };
+  const stopGlide = useCallback(() => {
+    cancelAnimationFrame(glide.current);
+    glide.current = 0;
+  }, []);
+  const startGlide = (vx: number, vy: number) => {
+    stopGlide();
+    if (reduced || Math.hypot(vx, vy) < 0.035) return;
+    const from = { ...camera.current },
+      start = performance.now();
+    const tick = (now: number) => {
+      glide.current = 0;
+      if (document.hidden) {
+        saveWall();
+        return;
+      }
+      const elapsed = now - start;
+      camera.current = {
+        x: from.x + glideOffset(vx, elapsed),
+        y: from.y + glideOffset(vy, elapsed),
+      };
+      paint();
+      if (!glideFinished(elapsed)) glide.current = requestAnimationFrame(tick);
+      else saveWall();
+    };
+    glide.current = requestAnimationFrame(tick);
+  };
+  useEffect(() => {
+    if (reduced) stopGlide();
+    const stop = () => {
+      stopGlide();
+      saveWall();
+    };
+    window.addEventListener("pointerdown", stop, { passive: true });
+    document.addEventListener("visibilitychange", stop);
+    return () => {
+      stopGlide();
+      window.removeEventListener("pointerdown", stop);
+      document.removeEventListener("visibilitychange", stop);
+    };
+  }, [reduced, stopGlide]);
   useLayoutEffect(() => {
     paint();
   }, [paint]);
@@ -279,6 +394,7 @@ export default function Wall() {
     observer.observe(viewport.current!);
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
+      stopGlide();
       camera.current.x -= e.shiftKey ? e.deltaY : e.deltaX;
       camera.current.y -= e.shiftKey ? e.deltaX : e.deltaY;
       schedule();
@@ -306,6 +422,7 @@ export default function Wall() {
       const action = (event as CustomEvent<WallAction>).detail;
       if (action === "clear" || action === "explore") clearSelection();
       if (action === "center" || action === "explore") {
+        stopGlide();
         camera.current = { x: 50, y: 112 };
         paint();
       }
@@ -331,6 +448,8 @@ export default function Wall() {
       }
       blockedUntil.current = performance.now() + 180;
       setMoving(false);
+      if (e.type === "pointerup" && performance.now() - p.time < 90)
+        startGlide(p.vx, p.vy);
     }
     pointer.current = null;
     if (e.currentTarget.hasPointerCapture(e.pointerId))
@@ -340,12 +459,13 @@ export default function Wall() {
   };
   return (
     <main
-      className={`wall ${moving ? "is-dragging" : ""}`}
+      className={`wall ${moving ? "is-dragging" : ""} ${intro ? "wall-arriving" : ""}`}
       ref={viewport}
       aria-label="可向四个方向拖动的作品墙"
       style={fogStyle(fog)}
       onDragStartCapture={(e) => e.preventDefault()}
       onKeyDown={(e) => {
+        stopGlide();
         if (e.key === "Escape") clearSelection();
       }}
       onFocusCapture={(e) => {
@@ -373,6 +493,8 @@ export default function Wall() {
       onPointerDown={(e) => {
         if (e.button !== 0 || e.isPrimary === false) return;
         const element = e.target as HTMLElement;
+        stopGlide();
+        setIntro(false);
         // Keep native image dragging and text selection from stealing the gesture.
         e.preventDefault();
         const owner =
@@ -384,6 +506,11 @@ export default function Wall() {
           y: e.clientY,
           cx: camera.current.x,
           cy: camera.current.y,
+          lx: e.clientX,
+          ly: e.clientY,
+          time: performance.now(),
+          vx: 0,
+          vy: 0,
         };
         dragging.current = false;
       }}
@@ -392,7 +519,16 @@ export default function Wall() {
         if (!p || p.id !== e.pointerId) return;
         const dx = e.clientX - p.x,
           dy = e.clientY - p.y;
+        const now = performance.now(),
+          dt = Math.max(1, now - p.time);
+        p.vx = p.vx * 0.35 + ((e.clientX - p.lx) / dt) * 0.65;
+        p.vy = p.vy * 0.35 + ((e.clientY - p.ly) / dt) * 0.65;
+        p.lx = e.clientX;
+        p.ly = e.clientY;
+        p.time = now;
         if (!dragging.current && Math.hypot(dx, dy) > 6) {
+          opening.current = null;
+          setPendingSlot(null);
           dragging.current = true;
           setMoving(true);
           // The viewport stays mounted while cards are clipped during a long pan.
@@ -423,12 +559,14 @@ export default function Wall() {
             row={b.row}
             dragging={dragging}
             reduced={reduced}
+            pendingSlot={pendingSlot}
             selectedSlot={selectedSlot}
             onActivate={activate}
             onClear={clearSelection}
           />
         ))}
       </div>
+      <AmbientDust drift={drift} />
     </main>
   );
 }

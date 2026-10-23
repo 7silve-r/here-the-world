@@ -6,7 +6,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { ArrowRight, ArrowUpRight, Globe2, Mail } from "lucide-react";
+import { ArrowRight, ArrowUpRight } from "lucide-react";
 import {
   acceptSession,
   api,
@@ -18,6 +18,7 @@ import {
 import { useAuth } from "../shared/hooks";
 import { Button, Loading, Notice, Success } from "../shared/ui";
 import { Field, passwordValid, text } from "../shared/forms";
+import { MatrixPortal } from "../shared/MatrixPortal";
 
 let resetToken = "";
 export function captureResetToken() {
@@ -43,32 +44,12 @@ export function Protected({ children }: { children: React.ReactNode }) {
     );
   return <div key={session.user.id}>{children}</div>;
 }
-const titles: Record<string, [string, string, string]> = {
-  login: [
-    "WELCOME BACK",
-    "世界很大，很高兴又见。",
-    "登录，继续你的下一次相遇。",
-  ],
-  register: [
-    "HELLO, WORLD",
-    "让世界，多一种看见。",
-    "从一个属于你的名字开始。",
-  ],
-  "verify-email": [
-    "ONE MORE STEP",
-    "一封邮件，一次相遇。",
-    "输入邮箱收到的 6 位验证码。",
-  ],
-  "forgot-password": [
-    "FIND YOUR WAY BACK",
-    "总有一条路，回到这里。",
-    "我们会向你的邮箱发送密码重置链接。",
-  ],
-  "reset-password": [
-    "A FRESH START",
-    "重新开始，也很好。",
-    "设置新密码后，请重新登录。",
-  ],
+const titles: Record<string, [string, string]> = {
+  login: ["登录", ""],
+  register: ["注册", ""],
+  "verify-email": ["验证邮箱", "输入邮箱收到的 6 位验证码。"],
+  "forgot-password": ["找回密码", "我们会向你的邮箱发送密码重置链接。"],
+  "reset-password": ["重置密码", "设置新密码后，请重新登录。"],
 };
 export default function AuthPage() {
   const location = useLocation(),
@@ -98,7 +79,7 @@ export default function AuthPage() {
       return () => clearTimeout(timer);
     }
   }, [remaining]);
-  const [eyebrow, title, subtitle] = titles[mode] || titles.login;
+  const [title, subtitle] = titles[mode] || titles.login;
   const remember = (value: string) => {
     sessionStorage.setItem("htw.email", value);
     sessionStorage.setItem("htw.returnTo", returnTo);
@@ -171,33 +152,36 @@ export default function AuthPage() {
   }
   const query = `?returnTo=${encodeURIComponent(returnTo)}`;
   return (
-    <main className="auth-page">
-      <section className="auth-art">
-        <div className="auth-art-top">
-          <Globe2 size={19} />
-          <span>HERE, YOU BELONG.</span>
-        </div>
-        <div className="auth-art-center">
-          <span>在此，</span>
-          <span>遇见万千。</span>
-          <p>
-            Every little world
-            <br />
-            makes the world.
-          </p>
-        </div>
-        <div className="auth-art-bottom">
-          山海、日常，以及每一个独一无二的你。
-          <ArrowUpRight size={22} />
-        </div>
-      </section>
-      <section className="auth-form">
-        <Link to="/" className="back-link">
-          ← 回到世界
+    <main className={`auth-page entry-auth auth-${mode}`}>
+      <div className="auth-visual" aria-hidden="true">
+        <MatrixPortal compact />
+      </div>
+      <section className="auth-form" aria-labelledby="auth-title">
+        <Link
+          className="entry-wordmark"
+          to="/welcome"
+          aria-label="Here the World 欢迎页"
+        >
+          HERE THE WORLD
         </Link>
-        <span className="eyebrow">{eyebrow}</span>
-        <h1>{title}</h1>
-        <p className="muted">{subtitle}</p>
+        {(mode === "login" || mode === "register") && (
+          <nav className="auth-tabs" aria-label="账号操作">
+            <Link
+              to={`/login${query}`}
+              aria-current={mode === "login" ? "page" : undefined}
+            >
+              登录
+            </Link>
+            <Link
+              to={`/register${query}`}
+              aria-current={mode === "register" ? "page" : undefined}
+            >
+              注册
+            </Link>
+          </nav>
+        )}
+        <h1 id="auth-title">{title}</h1>
+        {subtitle && <p className="muted">{subtitle}</p>}
         <Notice error={error} />
         {message && <Success>{message}</Success>}
         <form onSubmit={submit}>
@@ -220,7 +204,7 @@ export default function AuthPage() {
                 label="用户名"
                 name="username"
                 autoComplete="username"
-                placeholder="属于你的英文名字"
+                placeholder="英文用户名"
                 pattern="[a-z0-9_]{3,24}"
                 required
                 hint="3–24 位小写字母、数字或下划线，注册后不可修改。"
@@ -229,7 +213,7 @@ export default function AuthPage() {
               <Field
                 label="昵称"
                 name="displayName"
-                placeholder="你希望被怎样称呼"
+                placeholder="昵称"
                 required
                 error={error}
               />
@@ -267,13 +251,13 @@ export default function AuthPage() {
               pattern="[0-9]{6}"
               autoComplete="one-time-code"
               placeholder="6 位数字"
+              maxLength={6}
               required
               error={error}
             />
           )}
           {mode === "login" && (
             <div className="form-inline">
-              <span>欢迎带着好奇心回来。</span>
               <Link to={`/forgot-password${query}`}>忘记密码？</Link>
             </div>
           )}
@@ -286,7 +270,7 @@ export default function AuthPage() {
             {
               (
                 {
-                  login: "进入世界",
+                  login: "登录",
                   register: "创建账号",
                   "verify-email": "验证邮箱",
                   "forgot-password": "发送重置邮件",
@@ -318,25 +302,22 @@ export default function AuthPage() {
             {remaining > 0 ? `${remaining} 秒后可重新发送` : "重新发送验证码"}
           </Button>
         )}
-        <div className="auth-switch">
-          {mode === "login" ? (
-            <>
-              还没有自己的小世界？
-              <Link to={`/register${query}`}>
-                加入我们 <ArrowUpRight size={14} />
-              </Link>
-            </>
-          ) : (
+        {mode !== "login" && mode !== "register" && (
+          <div className="auth-switch">
             <Link to={`/login${query}`}>
-              已有账号，前往登录 <ArrowUpRight size={14} />
+              返回登录 <ArrowUpRight size={14} />
             </Link>
-          )}
-        </div>
+          </div>
+        )}
+        {mockLink && (
+          <Link className="mock-reset-link" to={mockLink}>
+            打开模拟重置邮件 <ArrowUpRight size={14} />
+          </Link>
+        )}
         {mockMode && (
-          <div className="demo-note">
-            <Mail size={16} />
+          <details className="auth-demo">
+            <summary>本地演示账号</summary>
             <div>
-              <strong>本地演示</strong>
               <p>
                 账号 world@example.com · 密码 HelloWorld2026
                 <br />
@@ -344,9 +325,8 @@ export default function AuthPage() {
                 <br />
                 模拟验证码首次 123456，重发后 654321（交替）；不会发送真实邮件。
               </p>
-              {mockLink && <Link to={mockLink}>打开模拟重置邮件 ↗</Link>}
             </div>
-          </div>
+          </details>
         )}
       </section>
     </main>

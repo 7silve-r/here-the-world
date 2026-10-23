@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   BLOCK_HEIGHT,
   BLOCK_WIDTH,
+  pixel,
   reflow,
   slotsForBlock,
   stableHit,
@@ -22,6 +23,36 @@ function exactCover(rects: Rect[]) {
       ).toHaveLength(1);
 }
 describe("stable two-dimensional geometry", () => {
+  it("pixel rectangles fill each block without gutters before and after selection", () => {
+    for (let row = -1; row <= 1; row++)
+      for (let column = -1; column <= 1; column++)
+        for (const target of [
+          null,
+          ...Array.from({ length: 12 }, (_, i) => i),
+        ]) {
+          const rects = reflow(column, row, target).map(pixel);
+          expect(rects.reduce((area, r) => area + r.width * r.height, 0)).toBe(
+            BLOCK_WIDTH * BLOCK_HEIGHT,
+          );
+          rects.forEach((a, i) => {
+            expect(a.x).toBeGreaterThanOrEqual(0);
+            expect(a.y).toBeGreaterThanOrEqual(0);
+            expect(a.x + a.width).toBeLessThanOrEqual(BLOCK_WIDTH);
+            expect(a.y + a.height).toBeLessThanOrEqual(BLOCK_HEIGHT);
+            rects.slice(i + 1).forEach((b) => {
+              const overlapX = Math.max(
+                0,
+                Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x),
+              );
+              const overlapY = Math.max(
+                0,
+                Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y),
+              );
+              expect(overlapX * overlapY).toBe(0);
+            });
+          });
+        }
+  });
   it("all positive and negative blocks and all preview targets exactly cover 12×8", () => {
     for (let y = -3; y <= 3; y++)
       for (let x = -3; x <= 3; x++) {

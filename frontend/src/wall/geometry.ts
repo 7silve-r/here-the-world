@@ -7,7 +7,7 @@ export type Slot = Rect & {
   row: number;
 };
 export const PITCH = 76,
-  GAP = 9,
+  GAP = 0,
   BLOCK_WIDTH = 12 * PITCH,
   BLOCK_HEIGHT = 8 * PITCH;
 // Original exact-cover vocabulary. No Folia source or generated tables are used.

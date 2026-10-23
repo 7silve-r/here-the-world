@@ -23,6 +23,8 @@ import {
 import { useAuth, useLoginGate } from "../shared/hooks";
 import { useIntentKey } from "../shared/forms";
 import type { WorkDetail } from "../api/generated";
+import { AnimatedNumber, Reveal } from "../shared/animation";
+import { coverName } from "../shared/cover-transition";
 import { localPreferences } from "../settings/Settings";
 function Media({ work }: { work: WorkDetail }) {
   const [failed, setFailed] = useState(false);
@@ -47,7 +49,6 @@ function Media({ work }: { work: WorkDetail }) {
   if (work.kind === "TEXT")
     return (
       <article className="detail-text">
-        <span className="eyebrow">A LITTLE PIECE OF MIND</span>
         <p>{work.body}</p>
         <span className="text-signature">— {work.author.displayName}</span>
       </article>
@@ -55,12 +56,19 @@ function Media({ work }: { work: WorkDetail }) {
   if (work.kind === "IMAGE")
     return (
       <div className="image-group">
-        {work.assets.map((a) => (
+        {work.assets.map((a, index) => (
           <figure key={a.id}>
             {a.url ? (
               <img
                 src={a.url}
                 alt={work.title}
+                className={index === 0 ? "detail-hero" : undefined}
+                data-work-cover={work.id}
+                style={
+                  index === 0
+                    ? { viewTransitionName: coverName(work.id) }
+                    : undefined
+                }
                 onError={(e) => {
                   e.currentTarget.hidden = true;
                   e.currentTarget.parentElement!.classList.add(
@@ -71,7 +79,6 @@ function Media({ work }: { work: WorkDetail }) {
             ) : (
               <p>图片正在准备</p>
             )}
-            <figcaption>影像 · {work.title}</figcaption>
           </figure>
         ))}
       </div>
@@ -84,7 +91,7 @@ function Media({ work }: { work: WorkDetail }) {
       m.playback.embedUrl?.startsWith("https://");
     return (
       <div className="music-detail">
-        <Artwork work={work} />
+        <Artwork work={work} sharedCover />
         <p>
           {m.title || work.title} {m.artist && ` / ${m.artist}`}
         </p>
@@ -113,7 +120,7 @@ function Media({ work }: { work: WorkDetail }) {
   const asset = work.assets[0];
   return (
     <div className="media-detail">
-      {work.kind === "AUDIO" && <Artwork work={work} />}
+      {work.kind === "AUDIO" && <Artwork work={work} sharedCover />}
       <Notice
         message={
           failed ? "资源暂时无法播放。可以刷新作品重新获取地址。" : undefined
@@ -245,7 +252,7 @@ export default function Detail() {
   if (query.isPending) return <Loading />;
   if (query.error)
     return (
-      <Page eyebrow="SOMEWHERE ELSE" title="这一刻，暂时走远了。">
+      <Page title="作品无法加载">
         <Notice error={query.error} />
         <Empty>作品可能已被移除，或者还未公开。</Empty>
       </Page>
@@ -260,7 +267,9 @@ export default function Detail() {
         <div className="detail-main">
           <Media work={work} />
           {work.kind !== "TEXT" && work.body && (
-            <p className="work-body">{work.body}</p>
+            <Reveal>
+              <p className="work-body">{work.body}</p>
+            </Reveal>
           )}
           <div className="detail-actions">
             <Button
@@ -273,7 +282,7 @@ export default function Detail() {
                 size={17}
                 fill={work.viewer.liked ? "currentColor" : "none"}
               />
-              {work.stats.likeCount} 喜欢
+              <AnimatedNumber value={work.stats.likeCount} /> 喜欢
             </Button>
             <Button
               className={work.viewer.bookmarked ? "selected" : ""}
@@ -285,7 +294,7 @@ export default function Detail() {
                 size={17}
                 fill={work.viewer.bookmarked ? "currentColor" : "none"}
               />
-              {work.stats.bookmarkCount} 收藏
+              <AnimatedNumber value={work.stats.bookmarkCount} /> 收藏
             </Button>
             <span>
               <MessageCircle size={16} />
@@ -295,7 +304,7 @@ export default function Detail() {
           <Notice error={error} />
           <section className="comments">
             <h2>
-              在这里，聊聊 <span>{work.stats.commentCount}</span>
+              评论 <span>{work.stats.commentCount}</span>
             </h2>
             <form
               onSubmit={async (e) => {
@@ -324,12 +333,12 @@ export default function Detail() {
               }}
             >
               <label className="field">
-                <span>留下你的感受</span>
+                <span>评论内容</span>
                 <textarea
-                  aria-label="留下你的感受"
+                  aria-label="评论内容"
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="一句问候，也是一种相遇。"
+                  placeholder="输入评论"
                   required
                   rows={3}
                 />
@@ -379,7 +388,7 @@ export default function Detail() {
                 </article>
               ))}
             {comments.data?.pages[0].items.length === 0 && (
-              <p className="muted">还没有评论，让对话从这里开始。</p>
+              <p className="muted">暂无评论</p>
             )}
             <More
               hasMore={comments.hasNextPage}
@@ -406,11 +415,6 @@ export default function Detail() {
             <small>@{work.author.username}</small>
             <p>{work.author.bio}</p>
           </Link>
-          <div className="aside-note">
-            每个作品，
-            <br />
-            都是一个世界的入口。<span>LOOK A LITTLE CLOSER.</span>
-          </div>
           {work.viewer.isOwner && (
             <div className="owner-tools">
               {work.status !== "PUBLISHED" && (
