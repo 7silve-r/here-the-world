@@ -42,7 +42,6 @@ type Database = {
   likes: Record<string, string[]>;
   bookmarks: Record<string, string[]>;
   bookmarkOrder?: Record<string, string[]>;
-  deleted: Record<string, string>;
   feeds: Record<string, { ids: string[]; expiresAt: string }>;
   cursors: Record<
     string,
@@ -123,7 +122,6 @@ function initial(): Database {
     comments: [],
     likes: {},
     bookmarks: {},
-    deleted: {},
     feeds: {},
     cursors: {},
     idempotency: {},
@@ -866,19 +864,19 @@ async function dispatchMock(
       case "publishWork":
       case "deleteWork": {
         const a = requiredAccount(db, request);
-        if (
-          op.operationId === "deleteWork" &&
-          db.deleted[params.workId] === a.user.id
-        ) {
-          data = ack;
-          break;
-        }
         const w = work(db, params.workId, a);
         owner(w, a);
         version(request, w);
         if (op.operationId === "deleteWork") {
-          db.deleted[w.id] = a.user.id;
           db.works = db.works.filter((x) => x.id !== w.id);
+          db.comments = db.comments.filter((c) => c.workId !== w.id);
+          delete db.likes[w.id];
+          delete db.bookmarks[w.id];
+          delete db.workReady[w.id];
+          for (const ids of Object.values(db.bookmarkOrder ?? {})) {
+            const index = ids.indexOf(w.id);
+            if (index >= 0) ids.splice(index, 1);
+          }
           data = ack;
           break;
         }
@@ -994,10 +992,7 @@ async function dispatchMock(
       case "deleteComment": {
         const a = requiredAccount(db, request),
           c = db.comments.find((c) => c.id === params.commentId);
-        if (!c) {
-          data = ack;
-          break;
-        }
+        if (!c) fail(404, "COMMENT_NOT_FOUND", "评论不存在");
         const w = work(db, c.workId, a);
         if (a.user.id !== c.author.id && a.user.id !== w.author.id)
           fail(403, "FORBIDDEN", "无法删除此评论");

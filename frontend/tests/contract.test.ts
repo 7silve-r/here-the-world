@@ -278,6 +278,9 @@ describe("OpenAPI validated mutable mock", () => {
       (await request(`/comments/${c.json.data.id}`, "DELETE")).status,
     ).toBe(200);
     expect(
+      (await request(`/comments/${c.json.data.id}`, "DELETE")).status,
+    ).toBe(404);
+    expect(
       (await request("/me/works?status=PUBLISHED")).json.data.items.some(
         (v: WorkDetail) => v.id === w.id,
       ),
@@ -290,6 +293,13 @@ describe("OpenAPI validated mutable mock", () => {
       ).status,
     ).toBe(200);
     expect((await request(`/works/${w.id}`)).status).toBe(404);
+    expect(
+      (
+        await request(`/works/${w.id}`, "DELETE", undefined, {
+          "If-Match": `"v${published.json.data.version}"`,
+        })
+      ).status,
+    ).toBe(404);
   });
   it("binary upload → complete → asset READY; saves while processing then publishes asynchronously", async () => {
     await login();
