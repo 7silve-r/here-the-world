@@ -178,13 +178,6 @@ CREATE TABLE feed_sessions
     expires_at BIGINT NOT NULL
 );
 
-CREATE TABLE feed_sessions
-(
-    id         VARCHAR(64) PRIMARY KEY,
-    cutoff     BIGINT NOT NULL,
-    expires_at BIGINT NOT NULL
-);
-
 CREATE TABLE feed_items
 (
     session_id VARCHAR(64) NOT NULL,
