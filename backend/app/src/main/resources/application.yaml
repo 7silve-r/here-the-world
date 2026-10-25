@@ -3,9 +3,9 @@ server:
   address: ${BIND_ADDRESS:127.0.0.1}
 spring:
   application:
-    name: here-the-world-reference
+    name: here-the-world
   datasource:
-    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/htw_reference?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/htw?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
     username: ${DB_USERNAME:htw}
     password: ${DB_PASSWORD:}
     hikari:
