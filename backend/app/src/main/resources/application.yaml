@@ -41,3 +41,9 @@ htw:
   jobs-enabled: ${JOBS_ENABLED:true}
   ffmpeg: ${FFMPEG:ffmpeg}
   ffprobe: ${FFPROBE:ffprobe}
+  cleanup:
+    task-done-days: ${CLEANUP_TASK_DONE_DAYS:7}
+    task-failed-days: ${CLEANUP_TASK_FAILED_DAYS:30}
+    upload-days: ${CLEANUP_UPLOAD_DAYS:7}
+    asset-days: ${CLEANUP_ASSET_DAYS:7}
+    batch-size: ${CLEANUP_BATCH_SIZE:100}
