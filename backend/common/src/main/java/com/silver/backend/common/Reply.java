@@ -10,6 +10,6 @@ public record Reply<T>(int status, T data, String etag) {
     }
 
     public static <T> Reply<T> work(int status, T data, long version) {
-        return new Reply<>(status, data, "\"" + version + "\"");
+        return new Reply<>(status, data, "\"v" + version + "\"");
     }
 }
