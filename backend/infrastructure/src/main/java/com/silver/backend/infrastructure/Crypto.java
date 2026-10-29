@@ -20,8 +20,6 @@ import java.util.*;
 
 @Component
 public class Crypto {
-    @Value("${htw.secret}")
-    private String secret_str;
     private final byte[] secret;
     @Autowired
     private JsonCodec json;
@@ -29,7 +27,7 @@ public class Crypto {
     private static final Base64.Encoder ENCODER = Base64.getEncoder();
     private static final Base64.Decoder DECODER = Base64.getDecoder();
 
-    public Crypto() {
+    public Crypto(@Value("${htw.secret}") String secret_str) {
         if (secret_str
                 .getBytes(StandardCharsets.UTF_8)
                 .length < 32) {
