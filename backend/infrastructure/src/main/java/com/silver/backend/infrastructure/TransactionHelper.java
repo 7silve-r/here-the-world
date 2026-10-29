@@ -43,12 +43,10 @@ public class TransactionHelper {
     }
 
     @Autowired
-    private PlatformTransactionManager manager;
-    @Autowired
     private LockMapper locks;
     private TransactionTemplate template;
 
-    public TransactionHelper() {
+    public TransactionHelper(PlatformTransactionManager manager) {
         template = new TransactionTemplate(manager);
         template.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
     }
