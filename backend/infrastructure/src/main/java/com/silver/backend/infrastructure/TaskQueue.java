@@ -147,20 +147,17 @@ public class TaskQueue {
     @Autowired
     private Crypto crypto;
     private Map<String, Handler> handlers;
-    @Value("${htw.cleanup.task-done-days}")
-    private long doneDays;
     private final long doneRetention;
-    @Value("${htw.cleanup.task-failed-days}")
-    private long failedDays;
     private final long failedRetention;
-    @Value("${htw.cleanup.batch-size}")
-    private int cleanupBatch;
+    private final int cleanupBatch;
 
     private record Execution(String taskId, String token){}
 
     private final ThreadLocal<Execution> execution = new ThreadLocal<>();
 
-    public TaskQueue() {
+    public TaskQueue(@Value("${htw.cleanup.task-done-days}") long doneDays,
+                     @Value("${htw.cleanup.task-failed-days}") long failedDays,
+                     @Value("${htw.cleanup.batch-size}")  int cleanupBatch) {
         this.handlers = new ConcurrentHashMap<>();
         if (doneDays < 1 || failedDays < 1 || cleanupBatch < 1 || cleanupBatch > 1000) {
             throw new IllegalArgumentException(
@@ -168,6 +165,7 @@ public class TaskQueue {
         }
         this.doneRetention = Math.multiplyExact(doneDays, 86_400_000L);
         this.failedRetention = Math.multiplyExact(failedDays, 86_400_000L);
+        this.cleanupBatch = cleanupBatch;
     }
 
     public String enqueue(String kind, Map<String, Object> payload) {
