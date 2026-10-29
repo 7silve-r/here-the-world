@@ -277,8 +277,8 @@ class CryptoTest {
 
     private void assertApi(int status, String code, Executable action) {
         ApiException error = assertThrows(ApiException.class, action);
-        assertEquals(status, ReflectionTestUtils.getField(error, "status"));
-        assertEquals(code, ReflectionTestUtils.getField(error, "code"));
+        assertEquals(status, error.getStatus());
+        assertEquals(code, error.getCode());
     }
 
     private String tamper(String token, int index) {
