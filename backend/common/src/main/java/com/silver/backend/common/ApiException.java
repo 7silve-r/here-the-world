@@ -1,7 +1,10 @@
 package com.silver.backend.common;
 
+import lombok.Getter;
+
 import java.util.List;
 
+@Getter
 public class ApiException extends RuntimeException{
     public record Detail(String field, String reason, String message){}
 
