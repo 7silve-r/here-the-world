@@ -37,14 +37,14 @@ export function RouteScene({ children }: { children: ReactNode }) {
       key={pathname}
       className="route-scene"
       initial={
-        reduced || pathname === "/welcome" || coverTransitionActive()
+        reduced || coverTransitionActive()
           ? false
           : { opacity: 0, y: pathname === "/" ? 0 : 20 }
       }
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduced ? 0 : 0.48, ease: softEase }}
     >
-      {pathname !== "/" && pathname !== "/welcome" && !reduced && (
+      {pathname !== "/" && !reduced && (
         <span className="route-flare" aria-hidden="true" />
       )}
       {children}

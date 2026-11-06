@@ -11,7 +11,7 @@ import { Button, Notice, Page } from "../shared/ui";
 import { Field, Textarea, passwordValid, text } from "../shared/forms";
 import UploadField from "../publishing/UploadField";
 const defaults: Preferences = {
-  theme: "DARK",
+  theme: "LIGHT",
   motion: "SYSTEM",
   autoPlayMedia: false,
 };
@@ -27,7 +27,7 @@ export function localPreferences(): Preferences {
 }
 export function applyPreferences(value: Preferences) {
   const root = document.documentElement;
-  root.dataset.theme = "DARK";
+  root.dataset.theme = "LIGHT";
   root.dataset.motion = value.motion;
   window.dispatchEvent(new Event("htw:preferences"));
 }
@@ -63,7 +63,7 @@ export default function Settings() {
   });
   const [preferences, setPreferences] = useState(() => ({
       ...localPreferences(),
-      theme: "DARK" as const,
+      theme: "LIGHT" as const,
     })),
     [displayName, setDisplayName] = useState(""),
     [bio, setBio] = useState(""),
@@ -78,7 +78,10 @@ export default function Settings() {
     setBio(me.data?.bio || "");
   }, [me.data]);
   useEffect(() => {
-    setPreferences({ ...(settings.data || localPreferences()), theme: "DARK" });
+    setPreferences({
+      ...(settings.data || localPreferences()),
+      theme: "LIGHT",
+    });
   }, [settings.data, session?.user.id]);
   useEffect(() => {
     setAvatars([]);
@@ -257,7 +260,7 @@ export default function Settings() {
                   <Palette size={15} />
                   界面主题
                 </span>
-                <input aria-label="界面主题" value="深色" readOnly />
+                <input aria-label="界面主题" value="浅色" readOnly />
               </label>
               <label className="field">
                 <span>动态效果</span>

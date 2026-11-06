@@ -159,8 +159,8 @@ export default function AuthPage() {
       <section className="auth-form" aria-labelledby="auth-title">
         <Link
           className="entry-wordmark"
-          to="/welcome"
-          aria-label="Here the World 欢迎页"
+          to="/"
+          aria-label="Here the World 作品墙"
         >
           HERE THE WORLD
         </Link>

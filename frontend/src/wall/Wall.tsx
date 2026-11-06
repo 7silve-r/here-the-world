@@ -21,6 +21,7 @@ import {
   type Rect,
 } from "./geometry";
 import { MotionDirector } from "./motion";
+import { decorationForSlot, patternForBlock } from "./decoration";
 import {
   cancelFeed,
   discoverSlots,
@@ -58,7 +59,7 @@ function Block({
   column: number;
   row: number;
   selectedSlot: string | null;
-  onActivate: (id: string, key: string) => void;
+  onActivate: (id: string | null, key: string) => void;
   onClear: () => void;
   dragging: React.RefObject<boolean>;
   reduced: boolean;
@@ -99,8 +100,11 @@ function Block({
       }}
     >
       {slots.map((slot, i) => {
-        const id = wallMemory.slots[slot.key],
+        const id = wallMemory.slots[slot.key] || wallMemory.copies[slot.key],
           w = id ? wallMemory.items[id] : undefined;
+        // Use a patterned tile during loading/empty feeds too: never bare gaps.
+        const decoration = !w ? patternForBlock(column, row) : null;
+        const interactive = !!w || !!decoration;
         return (
           <button
             ref={(el) => {
@@ -108,19 +112,24 @@ function Block({
             }}
             key={slot.key}
             data-slot={slot.key}
+            data-work-id={w?.id}
+            data-visual-copy={wallMemory.copies[slot.key] ? "true" : undefined}
+            data-decoration={decoration?.kind}
             style={{ "--arrival-delay": `${i * 16}ms` } as CSSProperties}
-            className={`wall-tile ${target === i ? "previewing is-selected" : ""} ${w ? "" : "material-tile"}`}
+            className={`wall-tile ${target === i ? "previewing is-selected" : ""} ${w ? "" : "material-tile"} ${decoration ? "decorative-tile" : ""}`}
             aria-label={
               w
                 ? `${w.title}，${w.author.displayName}，${target === i ? "再次点击进入详情" : "点击展开作品"}`
-                : "尚未探索的空间"
+                : decoration
+                  ? `${decoration.label}图案，${target === i ? "已点亮" : "点击展开"}`
+                  : "尚未探索的空间"
             }
-            tabIndex={w ? 0 : -1}
-            aria-hidden={!w}
-            aria-pressed={w ? target === i : undefined}
+            tabIndex={interactive ? 0 : -1}
+            aria-hidden={!interactive}
+            aria-pressed={interactive ? target === i : undefined}
             aria-busy={pendingSlot === slot.key || undefined}
             onPointerMove={(e) => {
-              if (reduced || dragging.current || !w) return;
+              if (reduced || dragging.current || !interactive) return;
               const rect = e.currentTarget.getBoundingClientRect();
               e.currentTarget.style.setProperty(
                 "--light-x",
@@ -140,11 +149,11 @@ function Block({
                 e.preventDefault();
                 return;
               }
-              if (!w) return;
-              if (target !== i) pulseLight(e.currentTarget);
+              if (!interactive) return;
+              if (target !== i || decoration) pulseLight(e.currentTarget);
               e.currentTarget.focus({ preventScroll: true });
               wallMemory.focus = slot.key;
-              onActivate(w.id, slot.key);
+              onActivate(w?.id || null, slot.key);
             }}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
@@ -155,7 +164,7 @@ function Block({
                 e.preventDefault();
                 const nodes = Array.from(
                   document.querySelectorAll<HTMLButtonElement>(
-                    ".wall-tile:not(.material-tile)",
+                    ".wall-tile[aria-pressed]",
                   ),
                 );
                 const current = e.currentTarget.getBoundingClientRect();
@@ -195,13 +204,24 @@ function Block({
                 work={w}
                 priority={column === 0 && row === 0}
                 sharedCover={target === i}
+                wallCard
               />
+            ) : decoration ? (
+              <div className="artwork decorative-art" aria-hidden="true">
+                <img src={decoration.src} alt="" draggable={false} />
+              </div>
             ) : null}
             {w && target === i && (
               <span className="open-hint">
-                {pendingSlot === slot.key ? "正在进入…" : "再次点击，进入详情"}{" "}
-                <ArrowUpRight size={14} />
+                {pendingSlot === slot.key ? "正在进入…" : "再次点击，进入详情"}
               </span>
+            )}
+            {w && (
+              <ArrowUpRight
+                className="wall-open-arrow"
+                size={17}
+                aria-hidden="true"
+              />
             )}
           </button>
         );
@@ -263,12 +283,17 @@ export default function Wall() {
     wallMemory.selectedSlot = null;
     saveWall();
   };
-  const activate = (id: string, key: string) => {
-    const next = activateSlot(selection.current, key);
+  const activate = (id: string | null, key: string) => {
+    const next = activateSlot(selection.current, key, id !== null);
     selection.current = next.selectedSlot;
     setSelectedSlot(next.selectedSlot);
     wallMemory.selectedSlot = next.selectedSlot;
     saveWall();
+    if (!id) {
+      opening.current = null;
+      setPendingSlot(null);
+      return;
+    }
     if (next.open) {
       if (opening.current === key) return;
       opening.current = key;
@@ -316,7 +341,10 @@ export default function Wall() {
     [blocks, clip, scale, size],
   );
   useEffect(() => {
-    discoverSlots(orderedSlots);
+    discoverSlots(
+      orderedSlots,
+      orderedSlots.filter((key) => decorationForSlot(key) !== null),
+    );
   }, [orderedSlots]);
   const paint = useCallback(() => {
     raf.current = 0;
@@ -429,7 +457,11 @@ export default function Wall() {
       if (action === "explore" || (action === "retry" && wallMemory.expired)) {
         refreshFeed();
         if (action === "explore") setClip({ ...camera.current });
-        else discoverSlots(orderedSlots);
+        else
+          discoverSlots(
+            orderedSlots,
+            orderedSlots.filter((key) => decorationForSlot(key) !== null),
+          );
       } else if (action === "retry") void loadFeed();
     };
     window.addEventListener("htw:wall-action", listener);

@@ -27,6 +27,64 @@ export function useAtmosphere() {
 export type Drift = { x: number; y: number; at: number };
 type Burst = { x: number; y: number; at: number; power: number };
 const burstEvent = "htw:light-burst";
+function starPath(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  rotation = 0,
+) {
+  context.beginPath();
+  for (let point = 0; point < 10; point++) {
+    const angle = rotation - Math.PI / 2 + (point * Math.PI) / 5;
+    const reach = point % 2 ? radius * 0.44 : radius;
+    const px = x + Math.cos(angle) * reach;
+    const py = y + Math.sin(angle) * reach;
+    if (point) context.lineTo(px, py);
+    else context.moveTo(px, py);
+  }
+  context.closePath();
+}
+function drawDie(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  angle: number,
+  face: 3 | 5,
+) {
+  context.save();
+  context.translate(x, y);
+  context.rotate(angle);
+  context.fillStyle = "#fff4ce";
+  context.strokeStyle = "#ad6537";
+  context.lineWidth = 1.5;
+  context.beginPath();
+  context.roundRect(-size / 2, -size / 2, size, size, size * 0.13);
+  context.fill();
+  context.stroke();
+  context.fillStyle = "#dc8737";
+  const pips =
+    face === 3
+      ? [
+          [-0.24, -0.24],
+          [0, 0],
+          [0.24, 0.24],
+        ]
+      : [
+          [-0.24, -0.24],
+          [0.24, -0.24],
+          [0, 0],
+          [-0.24, 0.24],
+          [0.24, 0.24],
+        ];
+  for (const [px, py] of pips) {
+    context.beginPath();
+    context.arc(px * size, py * size, size * 0.075, 0, Math.PI * 2);
+    context.fill();
+  }
+  context.restore();
+}
 export function pulseLight(element: HTMLElement, power = 1) {
   const rect = element.getBoundingClientRect();
   window.dispatchEvent(
@@ -38,6 +96,32 @@ export function pulseLight(element: HTMLElement, power = 1) {
       },
     }),
   );
+}
+
+function drawCard(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  scale: number,
+) {
+  context.save();
+  context.translate(x, y);
+  context.rotate(angle);
+  context.scale(scale, scale);
+  context.fillStyle = "#fff5d9";
+  context.strokeStyle = "#a48155";
+  context.lineWidth = 1.2;
+  context.beginPath();
+  context.roundRect(-10, -15, 20, 30, 2);
+  context.fill();
+  context.stroke();
+  context.fillStyle = "#bee0cc";
+  context.fillRect(-7, -12, 14, 24);
+  starPath(context, 0, -1, 5);
+  context.fillStyle = "#f8cc65";
+  context.fill();
+  context.restore();
 }
 
 export function AmbientDust({
@@ -71,7 +155,7 @@ export function AmbientDust({
     };
     const trail: { x: number; y: number; at: number }[] = [];
     const bursts: Burst[] = [];
-    const colors = ["99,92,255", "14,223,255", "255,57,156", "255,168,61"];
+    const colors = ["235,148,47", "80,157,205", "226,122,151", "218,179,60"];
     const random = () =>
       ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
     const particles = Array.from(
@@ -83,6 +167,7 @@ export function AmbientDust({
         depth: 0.3 + random() * 0.7,
         phase: random() * Math.PI * 2,
         color: colors[Math.floor(random() * colors.length)],
+        star: random() > 0.55,
       }),
     );
     const resize = () => {
@@ -131,7 +216,7 @@ export function AmbientDust({
         const dt = previous ? Math.min(48, now - previous) / 1000 : 0;
         previous = now;
         context.clearRect(0, 0, width, height);
-        context.globalCompositeOperation = "screen";
+        context.globalCompositeOperation = "source-over";
         // Three flowing ribbons share one canvas, with no full-screen blur passes.
         for (let band = 0; band < 3; band++) {
           const phase = now * 0.00022 + band * 2.1;
@@ -177,9 +262,9 @@ export function AmbientDust({
             pointer.y,
             250,
           );
-          halo.addColorStop(0, "rgba(116,72,255,0.19)");
-          halo.addColorStop(0.42, "rgba(0,201,255,0.065)");
-          halo.addColorStop(1, "rgba(0,201,255,0)");
+          halo.addColorStop(0, "rgba(245,179,69,0.17)");
+          halo.addColorStop(0.42, "rgba(44,136,211,0.09)");
+          halo.addColorStop(1, "rgba(152,200,229,0)");
           context.fillStyle = halo;
           context.fillRect(pointer.x - 250, pointer.y - 250, 500, 500);
         }
@@ -206,16 +291,68 @@ export function AmbientDust({
             b.y,
             radius,
           );
-          glow.addColorStop(0, `rgba(255,112,207,${fade * 0.33})`);
-          glow.addColorStop(0.7, `rgba(93,78,255,${fade * 0.13})`);
-          glow.addColorStop(1, "rgba(0,223,255,0)");
+          glow.addColorStop(0, `rgba(248,181,64,${fade * 0.3})`);
+          glow.addColorStop(0.7, `rgba(233,141,68,${fade * 0.2})`);
+          glow.addColorStop(1, "rgba(44,136,211,0)");
           context.fillStyle = glow;
           context.fillRect(b.x - radius, b.y - radius, radius * 2, radius * 2);
-          context.strokeStyle = `rgba(93,231,255,${fade * 0.7})`;
-          context.lineWidth = 1.5;
+          context.strokeStyle = `rgba(44,136,211,${fade * 0.7})`;
+          context.lineWidth = 2.5;
           context.beginPath();
           context.arc(b.x, b.y, radius, 0, Math.PI * 2);
           context.stroke();
+          context.save();
+          context.globalAlpha = fade;
+          for (let s = 0; s < 8; s++) {
+            const angle = (s * Math.PI) / 4 + t * 0.7;
+            const reach = radius * 0.65;
+            starPath(
+              context,
+              b.x + Math.cos(angle) * reach,
+              b.y + Math.sin(angle) * reach,
+              (4 + fade * 5) * b.power,
+              angle,
+            );
+            context.fillStyle = s % 2 ? "#e8a23e" : "#65aacb";
+            context.fill();
+            context.strokeStyle = "#986239";
+            context.lineWidth = 0.7;
+            context.stroke();
+          }
+          if (b.power >= 0.8) {
+            const reach = radius * 0.42;
+            drawCard(
+              context,
+              b.x - reach * 0.65,
+              b.y + reach * 0.7,
+              -0.5 - t,
+              1 - t * 0.2,
+            );
+            drawCard(
+              context,
+              b.x + reach * 0.7,
+              b.y - reach * 0.7,
+              0.5 + t,
+              0.9 - t * 0.2,
+            );
+            drawDie(
+              context,
+              b.x - reach,
+              b.y - reach * 0.6,
+              23 * (1 - t * 0.3),
+              -t * 2.2 - 0.2,
+              3,
+            );
+            drawDie(
+              context,
+              b.x + reach,
+              b.y + reach * 0.3,
+              20 * (1 - t * 0.3),
+              t * 2.2 + 0.3,
+              5,
+            );
+          }
+          context.restore();
           for (let spark = 0; spark < 28; spark++) {
             const angle = spark * 2.39996;
             const reach = radius * (0.65 + (spark % 5) * 0.12);
@@ -267,9 +404,14 @@ export function AmbientDust({
           context.arc(x, y, p.radius * 5, 0, Math.PI * 2);
           context.fill();
           context.fillStyle = `rgba(${color},${alpha + 0.15})`;
-          context.beginPath();
-          context.arc(x, y, p.radius * 0.6, 0, Math.PI * 2);
-          context.fill();
+          if (p.star) {
+            starPath(context, x, y, p.radius * 2.7, now * 0.00025 + p.phase);
+            context.fill();
+          } else {
+            context.beginPath();
+            context.arc(x, y, p.radius * 0.6, 0, Math.PI * 2);
+            context.fill();
+          }
         }
       }
       frame = requestAnimationFrame(draw);
