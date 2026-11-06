@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import {
-  ArrowUpRight,
-  Bookmark,
-  Heart,
-  MessageCircle,
-  Trash2,
-} from "lucide-react";
+import { ArrowUpRight, Star, Heart, MessageCircle, Trash2 } from "lucide-react";
 import { api, ApiError } from "../api/client";
 import { queryClient, syncInteraction, syncWork } from "../api/cache";
 import {
@@ -285,12 +279,12 @@ export default function Detail() {
               <AnimatedNumber value={work.stats.likeCount} /> 喜欢
             </Button>
             <Button
-              className={work.viewer.bookmarked ? "selected" : ""}
+              className={`bookmark-action ${work.viewer.bookmarked ? "selected" : ""}`}
               busy={busy}
               onClick={() => interaction("bookmark")}
               aria-pressed={work.viewer.bookmarked}
             >
-              <Bookmark
+              <Star
                 size={17}
                 fill={work.viewer.bookmarked ? "currentColor" : "none"}
               />

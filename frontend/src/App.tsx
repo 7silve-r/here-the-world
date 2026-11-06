@@ -1,5 +1,11 @@
 import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "./api/cache";
 import {
@@ -19,7 +25,6 @@ function PageLight() {
   return useLocation().pathname === "/" ? null : <AmbientDust backdrop />;
 }
 function NavigationChrome() {
-  if (useLocation().pathname === "/welcome") return null;
   return (
     <>
       <SkipLink />
@@ -29,7 +34,6 @@ function NavigationChrome() {
   );
 }
 const Wall = lazy(() => import("./wall/Wall"));
-const Welcome = lazy(() => import("./welcome/Welcome"));
 const AuthPage = lazy(() => import("./auth/AuthPages"));
 const Detail = lazy(loadWorkPage);
 function WorkRoute() {
@@ -70,7 +74,10 @@ export default function App() {
                 <Suspense fallback={<Loading />}>
                   <Routes>
                     <Route path="/" element={<Wall />} />
-                    <Route path="/welcome" element={<Welcome />} />
+                    <Route
+                      path="/welcome"
+                      element={<Navigate to="/" replace />}
+                    />
                     <Route path="/works/:workId" element={<WorkRoute />} />
                     <Route path="/users/:userId" element={<Lists />} />
                     <Route

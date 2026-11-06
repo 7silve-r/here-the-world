@@ -3,7 +3,10 @@ import type { FeedPage, InteractionState, WorkCard } from "../api/generated";
 type Memory = {
   camera: { x: number; y: number };
   slots: Record<string, string>;
+  copies: Record<string, string>;
+  repeatIndex: number;
   discovered: string[];
+  reservedSlots: string[];
   items: Record<string, WorkCard>;
   queue: string[];
   cursor: string | null;
@@ -20,7 +23,10 @@ function initial(): Memory {
   return {
     camera: { x: 50, y: 112 },
     slots: {},
+    copies: {},
+    repeatIndex: 0,
     discovered: [],
+    reservedSlots: [],
     items: {},
     queue: [],
     cursor: null,
@@ -70,13 +76,45 @@ function emit() {
   listeners.forEach((f) => f());
 }
 function assign() {
-  for (const slot of wallMemory.discovered) {
-    if (!wallMemory.slots[slot] && wallMemory.queue.length)
-      wallMemory.slots[slot] = wallMemory.queue.shift()!;
-  }
-}
-export function discoverSlots(keys: string[]) {
+  const reserved = new Set(wallMemory.reservedSlots);
+  const works = Object.keys(wallMemory.items);
   let changed = false;
+  for (const slot of wallMemory.discovered) {
+    if (reserved.has(slot) || wallMemory.slots[slot] || wallMemory.copies[slot])
+      continue;
+    if (wallMemory.queue.length) {
+      wallMemory.slots[slot] = wallMemory.queue.shift()!;
+      changed = true;
+    } else if (!wallMemory.hasMore && works.length) {
+      // A visual instance has its own slot identity; the API work stays unique.
+      wallMemory.copies[slot] = works[wallMemory.repeatIndex++ % works.length];
+      changed = true;
+    }
+  }
+  return changed;
+}
+function needsContent() {
+  const reserved = new Set(wallMemory.reservedSlots);
+  return wallMemory.discovered.some(
+    (key) =>
+      !reserved.has(key) && !wallMemory.slots[key] && !wallMemory.copies[key],
+  );
+}
+export function discoverSlots(keys: string[], reservedKeys: string[] = []) {
+  let changed = false;
+  const reserved = new Set(wallMemory.reservedSlots);
+  for (const key of reservedKeys) {
+    // Keep already discovered works in place when introducing decoration.
+    if (
+      !reserved.has(key) &&
+      !wallMemory.slots[key] &&
+      !wallMemory.copies[key]
+    ) {
+      reserved.add(key);
+      wallMemory.reservedSlots.push(key);
+      changed = true;
+    }
+  }
   const known = new Set(wallMemory.discovered);
   keys.forEach((key) => {
     if (!known.has(key)) {
@@ -85,9 +123,9 @@ export function discoverSlots(keys: string[]) {
       changed = true;
     }
   });
-  assign();
+  changed = assign() || changed;
   if (changed) emit();
-  if (wallMemory.discovered.some((k) => !wallMemory.slots[k])) void loadFeed();
+  if (needsContent()) void loadFeed();
 }
 export async function loadFeed() {
   if (flight || wallMemory.expired || !wallMemory.hasMore) return flight;
@@ -127,7 +165,7 @@ export async function loadFeed() {
       !wallMemory.error &&
       !wallMemory.expired &&
       wallMemory.hasMore &&
-      wallMemory.discovered.some((k) => !wallMemory.slots[k])
+      needsContent()
     )
       void loadFeed();
   }));
@@ -172,7 +210,12 @@ if (typeof window !== "undefined") {
     Object.entries(wallMemory.slots).forEach(([slot, id]) => {
       if (id === event.detail) delete wallMemory.slots[slot];
     });
+    Object.entries(wallMemory.copies).forEach(([slot, id]) => {
+      if (id === event.detail) delete wallMemory.copies[slot];
+    });
     wallMemory.queue = wallMemory.queue.filter((id) => id !== event.detail);
+    assign();
     emit();
+    if (needsContent()) void loadFeed();
   }) as EventListener);
 }

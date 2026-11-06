@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { activateSlot, fogStyle, readFogLevel } from "../src/wall/interaction";
 
 describe("click-only wall expansion", () => {
+  it("keeps decorative slots selected without ever opening a detail route", () => {
+    const first = activateSlot(null, "0,0:1", false);
+    expect(first).toEqual({ selectedSlot: "0,0:1", open: false });
+    expect(
+      activateSlot(first.selectedSlot, first.selectedSlot, false).open,
+    ).toBe(false);
+    expect(activateSlot(first.selectedSlot, "0,0:2").open).toBe(false);
+  });
   it("selects on first activation and opens only on another activation of that slot", () => {
     const first = activateSlot(null, "0,0:1");
     expect(first).toEqual({ selectedSlot: "0,0:1", open: false });
@@ -25,7 +33,7 @@ describe("click-only wall expansion", () => {
       "--wall-fog-saturation": 1,
     });
     expect(fogStyle(100)).toMatchObject({
-      "--wall-fog-blur": "10px",
+      "--wall-fog-blur": "26px",
       "--wall-fog-opacity": 1,
     });
   });

@@ -4,6 +4,8 @@ import App from "./App";
 import { bootstrap } from "./api/client";
 import { captureResetToken } from "./auth/AuthPages";
 import "./styles.css";
+import "./theme.css";
+import "./orange-juice.css";
 captureResetToken();
 await bootstrap();
 ReactDOM.createRoot(document.getElementById("root")!).render(

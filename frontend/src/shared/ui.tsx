@@ -14,12 +14,14 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, m } from "motion/react";
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUpRight,
   AudioLines,
-  Bookmark,
+  Star,
   Check,
   ChevronRight,
   Compass,
+  Dices,
   Image,
   LoaderCircle,
   Plus,
@@ -209,29 +211,47 @@ export function Page({
 }
 export function NavigationToggle() {
   const { open, setOpen } = useNavigation();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   return (
-    <button
-      className="icon-button menu-button floating-navigation-toggle"
-      aria-expanded={open}
-      aria-controls="main-navigation"
-      aria-label={open ? "收起导航" : "展开导航"}
-      onClick={() => setOpen(!open)}
-    >
-      <m.svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        strokeLinecap="round"
-        aria-hidden="true"
+    <>
+      <button
+        className="icon-button menu-button floating-navigation-toggle"
+        aria-expanded={open}
+        aria-controls="main-navigation"
+        aria-label={open ? "收起导航" : "展开导航"}
+        onClick={() => setOpen(!open)}
       >
-        <m.path animate={{ d: open ? "M6 6L18 18" : "M4 7L20 7" }} />
-        <m.path d="M4 12L20 12" animate={{ opacity: open ? 0 : 1 }} />
-        <m.path animate={{ d: open ? "M6 18L18 6" : "M4 17L20 17" }} />
-      </m.svg>
-    </button>
+        <m.svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <m.path animate={{ d: open ? "M6 6L18 18" : "M4 7L20 7" }} />
+          <m.path d="M4 12L20 12" animate={{ opacity: open ? 0 : 1 }} />
+          <m.path animate={{ d: open ? "M6 18L18 6" : "M4 17L20 17" }} />
+        </m.svg>
+      </button>
+      {pathname.startsWith("/works/") && (
+        <button
+          type="button"
+          className="icon-button floating-navigation-toggle wall-return-button"
+          aria-label="返回作品墙"
+          title="返回作品墙"
+          onClick={() => {
+            setOpen(false);
+            transitionRoute(() => navigate("/"));
+          }}
+        >
+          <ArrowLeft size={18} aria-hidden="true" />
+        </button>
+      )}
+    </>
   );
 }
 export function Navigation() {
@@ -245,7 +265,6 @@ export function Navigation() {
   const reduced = useReducedMotion();
   useSyncExternalStore(subscribeFeed, feedSnapshot);
   const links = [
-    ["/welcome", "欢迎页", Compass],
     ["/", "作品墙", Compass],
     ["/me/works", "我的作品", Image],
     [
@@ -254,7 +273,7 @@ export function Navigation() {
       User,
     ],
     ["/publish", "发布作品", Plus],
-    ["/me/bookmarks", "我的收藏", Bookmark],
+    ["/me/bookmarks", "我的收藏", Star],
     ["/settings", "设置", Settings],
   ] as const;
   return (
@@ -353,6 +372,7 @@ export function Navigation() {
                   回到起点
                 </Button>
                 <Button onClick={() => requestWallAction("explore")}>
+                  <Dices size={14} aria-hidden="true" />
                   重新探索
                 </Button>
                 <Button onClick={() => requestWallAction("clear")}>
@@ -387,10 +407,12 @@ export function Artwork({
   work,
   priority = false,
   sharedCover = false,
+  wallCard = false,
 }: {
   work: WorkCard;
   priority?: boolean;
   sharedCover?: boolean;
+  wallCard?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const [imageUrl, setImageUrl] = useState(work.cover?.url);
@@ -442,7 +464,7 @@ export function Artwork({
         />
       ) : work.kind === "TEXT" ? (
         <div className="poem">
-          <span className="quote-mark">“</span>
+          {!wallCard && <span className="quote-mark">“</span>}
           <p>{work.excerpt}</p>
           <span className="poem-rule" />
         </div>
@@ -473,13 +495,17 @@ export function Artwork({
           <span>{failed ? "封面加载失败" : kindNames[work.kind]}</span>
         </div>
       )}
-      <span className="kind-badge">
-        <Icon size={12} />
-        {kindNames[work.kind]}
-      </span>
+      {wallCard ? (
+        <span className="wall-kind-text">{kindNames[work.kind]}</span>
+      ) : (
+        <span className="kind-badge">
+          <Icon size={12} />
+          {kindNames[work.kind]}
+        </span>
+      )}
       <div className="card-caption">
         <span>
-          {work.author.displayName} <ArrowUpRight size={13} />
+          {work.author.displayName} {!wallCard && <ArrowUpRight size={13} />}
         </span>
         <h3>{work.title}</h3>
       </div>
