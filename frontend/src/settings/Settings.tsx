@@ -262,22 +262,6 @@ export default function Settings() {
                 </span>
                 <input aria-label="界面主题" value="浅色" readOnly />
               </label>
-              <label className="field">
-                <span>动态效果</span>
-                <select
-                  aria-label="动态效果"
-                  value={preferences.motion}
-                  onChange={(e) =>
-                    setPreferences({
-                      ...preferences,
-                      motion: e.target.value as Preferences["motion"],
-                    })
-                  }
-                >
-                  <option value="SYSTEM">跟随系统减少动态偏好</option>
-                  <option value="REDUCED">减少动态效果</option>
-                </select>
-              </label>
               <label className="checkbox-label">
                 <input
                   type="checkbox"

@@ -279,6 +279,7 @@ export default function Detail() {
               <AnimatedNumber value={work.stats.likeCount} /> 喜欢
             </Button>
             <Button
+              character="hime"
               className={`bookmark-action ${work.viewer.bookmarked ? "selected" : ""}`}
               busy={busy}
               onClick={() => interaction("bookmark")}
@@ -340,7 +341,7 @@ export default function Detail() {
                   {Array.from(comment).length} / {commentLimit}
                 </small>
               </label>
-              <Button busy={busy} type="submit">
+              <Button character="aru" busy={busy} type="submit">
                 {session ? "发布评论" : "登录后评论"} <ArrowUpRight size={14} />
               </Button>
             </form>

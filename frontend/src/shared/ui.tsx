@@ -19,9 +19,7 @@ import {
   AudioLines,
   Star,
   Check,
-  ChevronRight,
   Compass,
-  Dices,
   Image,
   LoaderCircle,
   Plus,
@@ -36,8 +34,14 @@ import { useAuth, useReducedMotion } from "./hooks";
 import { Reveal, softEase } from "./animation";
 import { coverName, prepareWork, transitionRoute } from "./cover-transition";
 import { pulseLight, useAtmosphere } from "./atmosphere";
-import { requestWallAction, useWallFog } from "../wall/interaction";
+import { requestWallAction } from "../wall/interaction";
 import { feedSnapshot, subscribeFeed, wallMemory } from "../feed/provider";
+import { CharacterCard, CharacterBadge } from "./CharacterCard";
+import {
+  characterForPath,
+  orangeJuiceCharacters,
+  type OrangeJuiceCharacter,
+} from "./characters";
 const navContext = createContext({
   open: false,
   setOpen: (_value: boolean) => {},
@@ -77,26 +81,47 @@ export const kindIcons = {
 export function Button({
   children,
   busy,
+  character,
   className = "",
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { busy?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  busy?: boolean;
+  character?: OrangeJuiceCharacter;
+}) {
   const reduced = useReducedMotion();
+  const [atmosphere] = useAtmosphere();
+  const { pathname } = useLocation();
+  const badge =
+    character ||
+    (className.split(" ").includes("primary")
+      ? characterForPath(pathname)
+      : undefined);
   const [ripple, setRipple] = useState<{
     key: number;
     x: number;
     y: number;
   } | null>(null);
   const serial = useRef(0);
+  useEffect(() => {
+    if (reduced || !atmosphere) setRipple(null);
+  }, [reduced, atmosphere]);
+  const feedback = (button: HTMLButtonElement, x: number, y: number) => {
+    if (reduced || !atmosphere || props.disabled || busy) return;
+    pulseLight(button, 0.55);
+    setRipple({ key: ++serial.current, x, y });
+  };
   return (
     <button
       {...props}
       disabled={props.disabled || busy}
-      className={`button ${className}`}
+      className={`button ${className}${badge ? " has-character" : ""}`}
       aria-busy={busy}
+      data-still={reduced || !atmosphere || undefined}
       onPointerDown={(e) => {
         props.onPointerDown?.(e);
         if (
           reduced ||
+          !atmosphere ||
           e.defaultPrevented ||
           props.disabled ||
           busy ||
@@ -104,12 +129,14 @@ export function Button({
         )
           return;
         const rect = e.currentTarget.getBoundingClientRect();
-        pulseLight(e.currentTarget, 0.45);
-        setRipple({
-          key: ++serial.current,
-          x: e.clientX - rect.left,
-          y: e.clientY - rect.top,
-        });
+        feedback(e.currentTarget, e.clientX - rect.left, e.clientY - rect.top);
+      }}
+      onClick={(e) => {
+        if (e.detail === 0 && !e.defaultPrevented) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          feedback(e.currentTarget, rect.width / 2, rect.height / 2);
+        }
+        props.onClick?.(e);
       }}
     >
       {ripple && (
@@ -120,6 +147,9 @@ export function Button({
           style={{ left: ripple.x, top: ripple.y }}
           onAnimationEnd={() => setRipple(null)}
         />
+      )}
+      {badge && !busy && (
+        <CharacterBadge character={badge} className="button-character" />
       )}
       {busy && <LoaderCircle className="spin" size={16} />} {children}
     </button>
@@ -182,7 +212,7 @@ export function Loading() {
 export function Empty({ children = "暂无内容" }: { children?: ReactNode }) {
   return (
     <div className="empty">
-      <Compass size={36} strokeWidth={1} />
+      <CharacterCard character="qp" className="empty-character" />
       <p>{children}</p>
       <Link to="/">
         返回首页 <ArrowUpRight size={14} />
@@ -199,11 +229,16 @@ export function Page({
   eyebrow?: string;
   title: string;
 }) {
+  const { pathname } = useLocation();
+  const reduced = useReducedMotion();
+  const [atmosphere] = useAtmosphere();
+  const character = characterForPath(pathname);
   return (
-    <main className="page">
+    <main className="page" data-still={reduced || !atmosphere || undefined}>
       <Reveal className="page-heading">
         {eyebrow && <span className="eyebrow">{eyebrow}</span>}
         <h1>{title}</h1>
+        <CharacterCard character={character} className="page-character" />
       </Reveal>
       {children}
     </main>
@@ -213,6 +248,8 @@ export function NavigationToggle() {
   const { open, setOpen } = useNavigation();
   const { pathname } = useLocation();
   const navigate = useNavigate();
+  const reduced = useReducedMotion();
+  const [atmosphere] = useAtmosphere();
   return (
     <>
       <button
@@ -220,9 +257,21 @@ export function NavigationToggle() {
         aria-expanded={open}
         aria-controls="main-navigation"
         aria-label={open ? "收起导航" : "展开导航"}
-        onClick={() => setOpen(!open)}
+        data-still={reduced || !atmosphere || undefined}
+        onClick={(e) => {
+          if (!reduced && atmosphere) pulseLight(e.currentTarget, 0.65);
+          setOpen(!open);
+        }}
       >
+        <span className="navigation-die" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
         <m.svg
+          className="navigation-cross"
           width="18"
           height="18"
           viewBox="0 0 24 24"
@@ -260,42 +309,83 @@ export function Navigation() {
     location = useLocation();
   const navigate = useNavigate();
   const [error, setError] = useState<unknown>();
-  const [fog, setFog] = useWallFog();
-  const [atmosphere, setAtmosphere] = useAtmosphere();
+  const [atmosphere] = useAtmosphere();
   const reduced = useReducedMotion();
+  const [previewCharacter, setPreviewCharacter] =
+    useState<OrangeJuiceCharacter | null>(null);
+  const featured = previewCharacter || characterForPath(location.pathname);
+  useEffect(() => {
+    if (!open) setPreviewCharacter(null);
+  }, [open]);
   useSyncExternalStore(subscribeFeed, feedSnapshot);
   const links = [
-    ["/", "作品墙", Compass],
-    ["/me/works", "我的作品", Image],
+    ["/", "作品墙", Compass, "qp"],
+    ["/me/works", "我的作品", Image, "marc"],
     [
       session ? `/users/${encodeURIComponent(session.user.id)}` : "/login",
       "个人主页",
       User,
+      "kai",
     ],
-    ["/publish", "发布作品", Plus],
-    ["/me/bookmarks", "我的收藏", Star],
-    ["/settings", "设置", Settings],
+    ["/publish", "发布作品", Plus, "aru"],
+    ["/me/bookmarks", "我的收藏", Star, "hime"],
+    ["/settings", "设置", Settings, "suguri"],
   ] as const;
   return (
     <AnimatePresence>
       {open && (
         <m.nav
           key="navigation"
-          initial={reduced ? false : { opacity: 0, y: -8, scale: 0.97 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
+          initial={
+            reduced || !atmosphere
+              ? false
+              : { opacity: 0, y: -8, scale: 0.94, rotate: -2 }
+          }
+          animate={{ opacity: 1, y: 0, scale: 1, rotate: 0 }}
           exit={{ opacity: 0, y: reduced ? 0 : -5, scale: reduced ? 1 : 0.98 }}
-          transition={{ duration: reduced ? 0 : 0.2, ease: softEase }}
+          transition={{
+            duration: reduced || !atmosphere ? 0 : 0.26,
+            ease: softEase,
+          }}
           style={{ transformOrigin: "top left" }}
           id="main-navigation"
           className="navigation floating-navigation"
           aria-label="主导航"
+          data-still={reduced || !atmosphere || undefined}
+          onPointerLeave={() => setPreviewCharacter(null)}
+          onBlur={(e) => {
+            if (
+              !(e.relatedTarget instanceof Node) ||
+              !e.currentTarget.contains(e.relatedTarget)
+            )
+              setPreviewCharacter(null);
+          }}
         >
+          <div className="navigation-deck" aria-hidden="true">
+            <CharacterCard character="sora" />
+            <CharacterCard character="poppo" />
+            <CharacterCard
+              key={featured}
+              character={featured}
+              className="navigation-featured"
+            />
+          </div>
           <div className="nav-links">
-            {links.map(([to, label, Icon]) => (
+            {links.map(([to, label, Icon, character]) => (
               <Link
                 key={label}
                 to={to}
                 className={location.pathname === to ? "active" : ""}
+                aria-current={location.pathname === to ? "page" : undefined}
+                data-character={character}
+                style={
+                  {
+                    "--nav-edge": orangeJuiceCharacters[character].edge,
+                    "--nav-paper": orangeJuiceCharacters[character].paper,
+                  } as CSSProperties
+                }
+                onPointerEnter={() => setPreviewCharacter(character)}
+                onFocus={() => setPreviewCharacter(character)}
                 onClick={(e) => {
                   setOpen(false);
                   if (
@@ -311,9 +401,13 @@ export function Navigation() {
                   transitionRoute(() => navigate("/"));
                 }}
               >
-                <Icon size={18} />
-                {label}
-                <ChevronRight size={14} />
+                <CharacterBadge character={character} />
+                <span className="nav-label">{label}</span>
+                <Icon
+                  className="nav-function-icon"
+                  size={17}
+                  aria-hidden="true"
+                />
               </Link>
             ))}
           </div>
@@ -342,40 +436,23 @@ export function Navigation() {
           </div>
           {location.pathname === "/" && (
             <div className="navigation-wall-controls">
-              <label className="fog-control">
-                <span>雾化</span>
-                <input
-                  type="range"
-                  aria-label="雾化程度"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={fog}
-                  onChange={(e) => setFog(Number(e.target.value))}
-                />
-                <output aria-hidden="true">{fog}%</output>
-              </label>
-              <label className="checkbox-label atmosphere-control">
-                <input
-                  type="checkbox"
-                  aria-label="动态光效"
-                  checked={atmosphere}
-                  disabled={reduced}
-                  onChange={(e) => setAtmosphere(e.target.checked)}
-                />
-                <span>
-                  动态光效{reduced && <small>减少动态时自动暂停</small>}
-                </span>
-              </label>
               <div className="navigation-wall-actions">
-                <Button onClick={() => requestWallAction("center")}>
+                <Button
+                  character="kai"
+                  onClick={() => requestWallAction("center")}
+                >
                   回到起点
                 </Button>
-                <Button onClick={() => requestWallAction("explore")}>
-                  <Dices size={14} aria-hidden="true" />
+                <Button
+                  character="poppo"
+                  onClick={() => requestWallAction("explore")}
+                >
                   重新探索
                 </Button>
-                <Button onClick={() => requestWallAction("clear")}>
+                <Button
+                  character="yuki"
+                  onClick={() => requestWallAction("clear")}
+                >
                   收起卡片
                 </Button>
               </div>

@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { template } from "../wall/geometry";
 import { useReducedMotion } from "./hooks";
 import { useAtmosphere } from "./atmosphere";
+import { CharacterCard, CharacterBadge } from "./CharacterCard";
 
 const panes = template(0, 0);
 
@@ -38,6 +39,15 @@ export function MatrixPortal({ compact = false }: { compact?: boolean }) {
           <i />
           <i />
           <i />
+        </div>
+      </div>
+      <div className="portal-party">
+        <CharacterCard character="suguri" />
+        <CharacterCard character="qp" />
+        <div className="portal-guests">
+          {(["marc", "poppo", "sora", "hime"] as const).map((character) => (
+            <CharacterBadge key={character} character={character} />
+          ))}
         </div>
       </div>
     </div>

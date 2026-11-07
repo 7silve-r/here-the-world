@@ -4,3 +4,5 @@ dist-real/
 .env.local
 *.tsbuildinfo
 test-results/
+*.md
+
