@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { activateSlot, fogStyle, readFogLevel } from "../src/wall/interaction";
+import { activateSlot, fogStyle } from "../src/wall/interaction";
+import { useAtmosphere } from "../src/shared/atmosphere";
 
 describe("click-only wall expansion", () => {
+  it("ignores the removed local switch and keeps atmosphere enabled", () => {
+    localStorage.setItem("htw.atmosphere", "off");
+    expect(useAtmosphere()).toEqual([true]);
+    localStorage.removeItem("htw.atmosphere");
+  });
   it("keeps decorative slots selected without ever opening a detail route", () => {
     const first = activateSlot(null, "0,0:1", false);
     expect(first).toEqual({ selectedSlot: "0,0:1", open: false });
@@ -21,20 +27,12 @@ describe("click-only wall expansion", () => {
     expect(next.selectedSlot).toBe("-1,2:4");
     expect(activateSlot(null, next.selectedSlot).open).toBe(false);
   });
-  it("normalizes the local-only fog setting and supports turning it fully off", () => {
-    expect(readFogLevel(null)).toBe(100);
-    expect(readFogLevel("invalid")).toBe(100);
-    expect(readFogLevel("-20")).toBe(0);
-    expect(readFogLevel("120")).toBe(100);
-    expect(fogStyle(0)).toMatchObject({
-      "--wall-fog-blur": "0px",
-      "--wall-fog-opacity": 0,
-      "--wall-fog-brightness": 1,
-      "--wall-fog-saturation": 1,
-    });
-    expect(fogStyle(100)).toMatchObject({
+  it("retains full fog regardless of the former local toolbar preference", () => {
+    localStorage.setItem("htw.wall.fog.v2", "0");
+    expect(fogStyle()).toMatchObject({
       "--wall-fog-blur": "26px",
       "--wall-fog-opacity": 1,
     });
+    localStorage.removeItem("htw.wall.fog.v2");
   });
 });

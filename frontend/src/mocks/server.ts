@@ -8,7 +8,9 @@ import {
   iso,
   otherUser,
   seedWorks,
+  DEMO_CONTENT_VERSION,
 } from "./seed";
+import { upgradeDemoContent } from "./demo-content";
 import { blobUrl, storeBlob } from "./blob-store";
 
 type Account = {
@@ -32,6 +34,7 @@ type Upload = {
   fail: boolean;
 };
 type Database = {
+  demoContentVersion?: number;
   accounts: Account[];
   works: T.WorkDetail[];
   assets: Record<string, T.Asset>;
@@ -84,6 +87,7 @@ const ack: T.Ack = { success: true };
 const accepted: T.MessageAccepted = { accepted: true, resendAfterSeconds: 60 };
 function initial(): Database {
   return {
+    demoContentVersion: DEMO_CONTENT_VERSION,
     accounts: [
       {
         user: demoUser,
@@ -106,7 +110,7 @@ function initial(): Database {
           ...demoUser,
           id: "user_pending",
           username: "pending_world",
-          displayName: "等待来信",
+          displayName: "新来的牌友",
         },
         email: "pending@example.com",
         verified: false,
@@ -130,10 +134,23 @@ function initial(): Database {
     workReady: {},
   };
 }
+let presentationSynced = false;
 function read(): Database {
   try {
     const raw = localStorage.getItem(storageKey);
     const db: Database = raw ? JSON.parse(raw) : initial();
+    if (upgradeDemoContent(db)) save(db);
+    if (!presentationSynced && typeof window !== "undefined") {
+      presentationSynced = true;
+      const cards = db.works
+        .filter((w) => w.status === "PUBLISHED")
+        .map((w) => card({ ...w, author: publicUser(db, w.author.id) }));
+      queueMicrotask(() =>
+        window.dispatchEvent(
+          new CustomEvent("htw:demo-presentation", { detail: cards }),
+        ),
+      );
+    }
     const restoreTicket = (value: unknown) => {
       if (
         value &&

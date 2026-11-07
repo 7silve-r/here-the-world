@@ -178,6 +178,18 @@ export function refreshFeed() {
   emit();
 }
 if (typeof window !== "undefined") {
+  window.addEventListener("htw:demo-presentation", ((
+    event: CustomEvent<WorkCard[]>,
+  ) => {
+    let changed = false;
+    for (const item of event.detail) {
+      const cached = wallMemory.items[item.id];
+      if (!cached) continue;
+      wallMemory.items[item.id] = { ...item, viewer: cached.viewer };
+      changed = true;
+    }
+    if (changed) emit();
+  }) as EventListener);
   window.addEventListener("htw:work", ((event: CustomEvent<WorkCard>) => {
     if (wallMemory.items[event.detail.id]) {
       wallMemory.items[event.detail.id] = event.detail;

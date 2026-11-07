@@ -34,15 +34,16 @@ import {
 } from "../feed/provider";
 import { Artwork } from "../shared/ui";
 import { useReducedMotion } from "../shared/hooks";
-import { AmbientDust, pulseLight, type Drift } from "../shared/atmosphere";
+import {
+  AmbientDust,
+  pulseLight,
+  useAtmosphere,
+  type Drift,
+} from "../shared/atmosphere";
+import { CharacterCard, orangeJuiceCharacters } from "../shared/CharacterCard";
 import { prepareWork, transitionRoute } from "../shared/cover-transition";
 import { glideFinished, glideOffset } from "./inertia";
-import {
-  activateSlot,
-  fogStyle,
-  useWallFog,
-  type WallAction,
-} from "./interaction";
+import { activateSlot, fogStyle, type WallAction } from "./interaction";
 
 let wallEntered = false;
 
@@ -115,7 +116,21 @@ function Block({
             data-work-id={w?.id}
             data-visual-copy={wallMemory.copies[slot.key] ? "true" : undefined}
             data-decoration={decoration?.kind}
-            style={{ "--arrival-delay": `${i * 16}ms` } as CSSProperties}
+            style={
+              {
+                "--arrival-delay": `${i * 16}ms`,
+                ...(decoration?.character
+                  ? {
+                      "--tile-accent":
+                        orangeJuiceCharacters[decoration.character].edge,
+                      "--tile-wash":
+                        orangeJuiceCharacters[decoration.character].paper,
+                      "--character-paper":
+                        orangeJuiceCharacters[decoration.character].paper,
+                    }
+                  : {}),
+              } as CSSProperties
+            }
             className={`wall-tile ${target === i ? "previewing is-selected" : ""} ${w ? "" : "material-tile"} ${decoration ? "decorative-tile" : ""}`}
             aria-label={
               w
@@ -150,7 +165,8 @@ function Block({
                 return;
               }
               if (!interactive) return;
-              if (target !== i || decoration) pulseLight(e.currentTarget);
+              if (target !== i || decoration)
+                pulseLight(e.currentTarget, decoration?.character ? 1.15 : 1);
               e.currentTarget.focus({ preventScroll: true });
               wallMemory.focus = slot.key;
               onActivate(w?.id || null, slot.key);
@@ -207,8 +223,15 @@ function Block({
                 wallCard
               />
             ) : decoration ? (
-              <div className="artwork decorative-art" aria-hidden="true">
-                <img src={decoration.src} alt="" draggable={false} />
+              <div
+                className={`artwork decorative-art${decoration.character ? " character-scene" : ""}`}
+                aria-hidden="true"
+              >
+                {decoration.character ? (
+                  <CharacterCard character={decoration.character} />
+                ) : (
+                  <img src={decoration.src} alt="" draggable={false} />
+                )}
               </div>
             ) : null}
             {w && target === i && (
@@ -266,7 +289,7 @@ export default function Wall() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(
     wallMemory.selectedSlot,
   );
-  const [fog] = useWallFog();
+  const [atmosphere] = useAtmosphere();
   const [intro, setIntro] = useState(() => !wallEntered && !reduced);
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
   useEffect(() => {
@@ -494,7 +517,8 @@ export default function Wall() {
       className={`wall ${moving ? "is-dragging" : ""} ${intro ? "wall-arriving" : ""}`}
       ref={viewport}
       aria-label="可向四个方向拖动的作品墙"
-      style={fogStyle(fog)}
+      data-still={reduced || !atmosphere || undefined}
+      style={fogStyle()}
       onDragStartCapture={(e) => e.preventDefault()}
       onKeyDown={(e) => {
         stopGlide();

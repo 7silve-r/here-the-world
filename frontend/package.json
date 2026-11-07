@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "generate:api": "node scripts/generate-api.mjs",
+    "generate:demo-media": "node scripts/generate-party-media.mjs",
     "check:api": "node scripts/generate-api.mjs --check",
     "typecheck": "tsc --noEmit",
     "build": "npm run check:api && tsc --noEmit && vite build",

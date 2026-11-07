@@ -1,28 +1,9 @@
-import { useEffect, useRef, useSyncExternalStore, type RefObject } from "react";
+import { useEffect, useRef, type RefObject } from "react";
 import { useReducedMotion } from "./hooks";
 
-const key = "htw.atmosphere";
-const eventName = "htw:atmosphere";
-function subscribe(listener: () => void) {
-  window.addEventListener(eventName, listener);
-  window.addEventListener("storage", listener);
-  return () => {
-    window.removeEventListener(eventName, listener);
-    window.removeEventListener("storage", listener);
-  };
-}
+// Always enabled; reduced-motion preferences are still respected by consumers.
 export function useAtmosphere() {
-  const enabled = useSyncExternalStore(
-    subscribe,
-    () => localStorage.getItem(key) !== "off",
-  );
-  return [
-    enabled,
-    (value: boolean) => {
-      localStorage.setItem(key, value ? "on" : "off");
-      window.dispatchEvent(new Event(eventName));
-    },
-  ] as const;
+  return [true] as const;
 }
 export type Drift = { x: number; y: number; at: number };
 type Burst = { x: number; y: number; at: number; power: number };
@@ -121,6 +102,38 @@ function drawCard(
   starPath(context, 0, -1, 5);
   context.fillStyle = "#f8cc65";
   context.fill();
+  context.restore();
+}
+
+function drawCitrus(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  rotation: number,
+) {
+  context.save();
+  context.translate(x, y);
+  context.rotate(rotation);
+  context.beginPath();
+  context.arc(0, 0, radius, 0, Math.PI * 2);
+  context.fillStyle = "#fff2b6";
+  context.fill();
+  context.strokeStyle = "#e7a63e";
+  context.lineWidth = 2;
+  context.stroke();
+  context.fillStyle = "#f5be51";
+  for (let slice = 0; slice < 6; slice++) {
+    const angle = (slice * Math.PI) / 3;
+    context.beginPath();
+    context.moveTo(
+      Math.cos(angle + 0.4) * radius * 0.2,
+      Math.sin(angle + 0.4) * radius * 0.2,
+    );
+    context.arc(0, 0, radius * 0.75, angle + 0.12, angle + Math.PI / 3 - 0.12);
+    context.closePath();
+    context.fill();
+  }
   context.restore();
 }
 
@@ -321,6 +334,20 @@ export function AmbientDust({
           }
           if (b.power >= 0.8) {
             const reach = radius * 0.42;
+            drawCitrus(
+              context,
+              b.x + reach * 0.2,
+              b.y - reach,
+              13 * (1 - t * 0.3),
+              t * 2,
+            );
+            drawCitrus(
+              context,
+              b.x - reach * 0.3,
+              b.y + reach,
+              10 * (1 - t * 0.3),
+              -t * 2,
+            );
             drawCard(
               context,
               b.x - reach * 0.65,
