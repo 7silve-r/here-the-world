@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-
 @Component
 public class JsonCodec {
 
@@ -35,8 +34,7 @@ public class JsonCodec {
     public Object canonical(Object value) {
         if (value instanceof Map<?, ?> map) {
             var sorted = new TreeMap<String, Object>();
-            map.forEach((k, v) ->
-                    sorted.put(k.toString(), canonical(v)));
+            map.forEach((k, v) -> sorted.put(k.toString(), canonical(v)));
             return sorted;
         }
         if (value instanceof List<?> list) {

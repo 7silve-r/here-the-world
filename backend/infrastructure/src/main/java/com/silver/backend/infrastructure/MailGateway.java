@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 public class MailGateway {
     @Autowired
     private ObjectProvider<MailSender> sender;
+
     @Value("${htw.mail-from}")
     private String from;
 

@@ -20,9 +20,9 @@ public final class HttpReplies {
         if (reply.etag() != null) {
             builder.eTag(reply.etag());
         }
-        return builder.body(Values.map(
-                "data",  reply.data(),
-                "requestId", request.getAttribute("requestId")
-                ));
+        return builder.body(
+                Values.map(
+                        "data", reply.data(),
+                        "requestId", request.getAttribute("requestId")));
     }
 }

@@ -22,55 +22,41 @@ public class Requests {
     @SuppressWarnings("unchecked")
     public Requests(JsonCodec json) throws IOException {
         this.json = json;
-        try (InputStream stream =
-                     getClass().getResourceAsStream("/openapi.json")) {
-            Map<String, Object> spec =json.readMap(
-                    new String(Objects.requireNonNull(stream).readAllBytes(),
-                            StandardCharsets.UTF_8)
-            );
-            schemas = (Map<String, Object>)
-                    ((Map<String, Object>) spec.get("components")).get("schemas");
+        try (InputStream stream = getClass().getResourceAsStream("/openapi.json")) {
+            Map<String, Object> spec = json.readMap(
+                    new String(Objects.requireNonNull(stream).readAllBytes(), StandardCharsets.UTF_8));
+            schemas =
+                    (Map<String, Object>) ((Map<String, Object>) spec.get("components")).get("schemas");
         }
     }
 
     @SuppressWarnings("unchecked")
-    public <T> T decode(String schema,
-                        Map<String, Object> input,
-                        Class<T> type) {
+    public <T> T decode(String schema, Map<String, Object> input, Class<T> type) {
         validate((Map<String, Object>) schemas.get(schema), input, "");
         return json.convert(input, type);
     }
 
-    public <T> PatchInput<T> patch(String schema,
-                                   Map<String, Object> input,
-                                   Class<T> type) {
-        return new PatchInput<>(
-                decode(schema, input, type), input.keySet()
-        );
+    public <T> PatchInput<T> patch(String schema, Map<String, Object> input, Class<T> type) {
+        return new PatchInput<>(decode(schema, input, type), input.keySet());
     }
 
     @SuppressWarnings("unchecked")
-    private void validate(Map<String, Object> schema,
-                          Object value,
-                          String path) {
+    private void validate(Map<String, Object> schema, Object value, String path) {
         if (schema.containsKey("$ref")) {
             validate(
                     (Map<String, Object>) schemas.get(
-                        schema.get("$ref")
-                                .toString()
-                                .replace("#/components/schemas/", "")
-                    ),
+                            schema.get("$ref").toString().replace("#/components/schemas/", "")),
                     value,
-                    path
-            );
+                    path);
             return;
         }
         if (schema.containsKey("anyOf")) {
             for (Object branch : (List<?>) schema.get("anyOf")) {
-                try{
+                try {
                     validate((Map<String, Object>) branch, value, path);
                     return;
-                }catch (ApiException ignored){}
+                } catch (ApiException ignored) {
+                }
             }
             throw ApiException.invalid(path, "INVALID_FORMAT", "字段类型不正确");
         }
@@ -99,8 +85,7 @@ public class Requests {
                 for (Object key : (List<?>) schema.getOrDefault("required", List.of())) {
                     if (!map.containsKey(key)) {
                         throw ApiException.invalid(
-                                join(path, key.toString()), "REQUIRED", "缺少必填字段"
-                        );
+                                join(path, key.toString()), "REQUIRED", "缺少必填字段");
                     }
                 }
                 if (map.size() < ((Number) schema.getOrDefault("minProperties", 0)).intValue()) {
@@ -108,17 +93,13 @@ public class Requests {
                 }
                 Map<String, Object> fields = (Map<String, Object>) schema.get("properties");
                 map.forEach(
-                        (k ,v) -> {
+                        (k, v) -> {
                             if (fields.containsKey(k)) {
                                 validate((Map<String, Object>) fields.get(k), v, join(path, k));
+                            } else if (Boolean.FALSE.equals(schema.get("additionalProperties"))) {
+                                throw ApiException.invalid(join(path, k), "NOT_ALLOWED", "不支持的字段");
                             }
-                            else if (Boolean.FALSE.equals(schema.get("additionalProperties"))) {
-                                throw ApiException.invalid(
-                                        join(path, k), "NOT_ALLOWED", "不支持的字段"
-                                );
-                            }
-                        }
-                );
+                        });
             }
             case "string" -> {
                 if (!(value instanceof String text)) {
@@ -142,12 +123,12 @@ public class Requests {
             }
             case "integer" -> {
                 if (!(value instanceof Number)
-                    || ((Number) value).doubleValue() != ((Number)value).longValue()) {
+                        || ((Number) value).doubleValue() != ((Number) value).longValue()) {
                     throw ApiException.invalid(path, "INVALID_FORMAT", "应为整数");
                 }
                 long n = ((Number) value).longValue();
                 if (n < ((Number) schema.getOrDefault("minimum", Long.MIN_VALUE)).longValue()
-                    || n > ((Number) schema.getOrDefault("maximum", Long.MAX_VALUE)).longValue()) {
+                        || n > ((Number) schema.getOrDefault("maximum", Long.MAX_VALUE)).longValue()) {
                     throw ApiException.invalid(path, "OUT_OF_RANGE", "数字超出范围");
                 }
             }
@@ -164,11 +145,14 @@ public class Requests {
                     throw ApiException.invalid(path, "OUT_OF_RANGE", "数组元素过多");
                 }
                 if (Boolean.TRUE.equals(schema.get("uniqueItems"))
-                    && new HashSet<>(list).size() != list.size()) {
+                        && new HashSet<>(list).size() != list.size()) {
                     throw ApiException.invalid(path, "NOT_ALLOWED", "数组元素不能重复");
                 }
                 for (int i = 0; i < list.size(); i++) {
-                    validate((Map<String, Object>) schema.get("items"), list.get(i), join(path, "[" + i + "]"));
+                    validate(
+                            (Map<String, Object>) schema.get("items"),
+                            list.get(i),
+                            join(path, "[" + i + "]"));
                 }
             }
             default -> {}

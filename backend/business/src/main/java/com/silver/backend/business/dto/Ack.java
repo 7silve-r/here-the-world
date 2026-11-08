@@ -1,4 +1,3 @@
 package com.silver.backend.business.dto;
 
-public record Ack(boolean success) {
-}
+public record Ack(boolean success) {}

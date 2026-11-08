@@ -30,31 +30,31 @@ public class TaskQueue {
         public void insert(Task task);
 
         @Select("""
-                SELECT lease_token 
-                FROM background_tasks 
-                WHERE id=#{id} AND state='RUNNING' 
+                SELECT lease_token
+                FROM background_tasks
+                WHERE id=#{id} AND state='RUNNING'
                 FOR UPDATE
                 """)
         String lockedOwner(String id);
 
         @Select("""
-                SELECT * 
-                FROM background_tasks 
-                WHERE (state='PENDING' 
-                           AND available_at<=#{now}) 
-                   OR(state='RUNNING' 
-                          AND lease_until<=#{now}) 
+                SELECT *
+                FROM background_tasks
+                WHERE (state='PENDING'
+                           AND available_at<=#{now})
+                   OR(state='RUNNING'
+                          AND lease_until<=#{now})
                 ORDER BY created_at,id LIMIT 1
                 """)
         Task next(long now);
 
         @Update("""
-                UPDATE background_tasks 
-                SET state='RUNNING',lease_token=#{token},lease_until=#{until},finished_at=NULL 
-                WHERE id=#{id} 
-                  AND ((state='PENDING' 
-                            AND available_at<=#{now}) 
-                           OR (state='RUNNING' 
+                UPDATE background_tasks
+                SET state='RUNNING',lease_token=#{token},lease_until=#{until},finished_at=NULL
+                WHERE id=#{id}
+                  AND ((state='PENDING'
+                            AND available_at<=#{now})
+                           OR (state='RUNNING'
                                    AND lease_until<=#{now}))
                 """)
         int claim(
@@ -75,19 +75,19 @@ public class TaskQueue {
                     lease_until  = 0,
                     lease_token  = NULL,
                     last_error   = #{error},
-                
+
                     finished_at = CASE
                         WHEN #{state} IN ('DONE', 'FAILED')
                         THEN #{finished}
                         ELSE NULL
                     END,
-                
+
                     payload = CASE
                         WHEN #{state} = 'DONE'
                         THEN ''
                         ELSE payload
                     END
-                
+
                 WHERE id = #{id}
                   AND lease_token = #{token}
                 """)
@@ -101,13 +101,13 @@ public class TaskQueue {
                 @Param("finished") long finished);
 
         @Select("""
-                SELECT id 
-                FROM background_tasks 
+                SELECT id
+                FROM background_tasks
                 WHERE (state='DONE'
-                           AND finished_at<#{doneBefore}) 
-                   OR(state='FAILED' 
-                          AND finished_at<#{failedBefore}) 
-                ORDER BY finished_at,id 
+                           AND finished_at<#{doneBefore})
+                   OR(state='FAILED'
+                          AND finished_at<#{failedBefore})
+                ORDER BY finished_at,id
                 LIMIT #{limit}
                 """)
         List<String> cleanupCandidates(
@@ -116,11 +116,11 @@ public class TaskQueue {
                 @Param("limit") int limit);
 
         @Delete("""
-                DELETE FROM background_tasks 
-                       WHERE id=#{id} 
-                         AND ((state='DONE' 
-                                   AND finished_at<#{doneBefore}) 
-                                  OR (state='FAILED' 
+                DELETE FROM background_tasks
+                       WHERE id=#{id}
+                         AND ((state='DONE'
+                                   AND finished_at<#{doneBefore})
+                                  OR (state='FAILED'
                                           AND finished_at<#{failedBefore}))
                 """)
         int deleteFinished(
@@ -131,11 +131,12 @@ public class TaskQueue {
 
     public interface Handler {
         String kind();
+
         void execute(Map<String, Object> payload);
     }
 
     public static class Pending extends RuntimeException {
-        public Pending(){
+        public Pending() {
             super("Waiting for dependency");
         }
     }
@@ -151,13 +152,14 @@ public class TaskQueue {
     private final long failedRetention;
     private final int cleanupBatch;
 
-    private record Execution(String taskId, String token){}
+    private record Execution(String taskId, String token) {}
 
     private final ThreadLocal<Execution> execution = new ThreadLocal<>();
 
-    public TaskQueue(@Value("${htw.cleanup.task-done-days}") long doneDays,
-                     @Value("${htw.cleanup.task-failed-days}") long failedDays,
-                     @Value("${htw.cleanup.batch-size}")  int cleanupBatch) {
+    public TaskQueue(
+            @Value("${htw.cleanup.task-done-days}") long doneDays,
+            @Value("${htw.cleanup.task-failed-days}") long failedDays,
+            @Value("${htw.cleanup.batch-size}") int cleanupBatch) {
         this.handlers = new ConcurrentHashMap<>();
         if (doneDays < 1 || failedDays < 1 || cleanupBatch < 1 || cleanupBatch > 1000) {
             throw new IllegalArgumentException(
@@ -194,12 +196,11 @@ public class TaskQueue {
     public boolean ownsExecution() {
         if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException(
-                    "Task ownership must be checked in the result transaction"
-            );
+                    "Task ownership must be checked in the result transaction");
         }
         Execution current = execution.get();
-        return current != null &&
-                Objects.equals(current.token(), mapper.lockedOwner(current.taskId()));
+        return current != null
+                && Objects.equals(current.token(), mapper.lockedOwner(current.taskId()));
     }
 
     public void tick() {
@@ -208,40 +209,24 @@ public class TaskQueue {
             return;
         }
         String token = Values.id();
-        if (mapper.claim(
-                candidate.id,
-                token,
-                Values.now() + 600_000,
-                Values.now()) != 1) {
+        if (mapper.claim(candidate.id, token, Values.now() + 600_000, Values.now()) != 1) {
             return;
         }
         Task task = mapper.get(candidate.id);
         if (task == null || !token.equals(task.leaseToken)) {
             return;
         }
-        try{
+        try {
             execution.set(new Execution(task.id, token));
             Handler handler = handlers.get(task.kind);
             if (handler == null) {
                 throw new IllegalStateException("No handler for task " + task.kind);
             }
             handler.execute(json.readMap(crypto.decrypt(task.payload)));
-            mapper.finish(task.id,
-                    token,
-                    "DONE",
-                    Values.now(),
-                    null,
-                    0,
-                    Values.now());
-        }catch (Pending waiting) {
-            mapper.finish(task.id,
-                    token,
-                    "PENDING",
-                    Values.now() + 2_000,
-                    null,
-                    0,
-                    Values.now());
-        }catch (Exception failure) {
+            mapper.finish(task.id, token, "DONE", Values.now(), null, 0, Values.now());
+        } catch (Pending waiting) {
+            mapper.finish(task.id, token, "PENDING", Values.now() + 2_000, null, 0, Values.now());
+        } catch (Exception failure) {
             int next = task.attempts + 1;
             mapper.finish(
                     task.id,
@@ -251,7 +236,7 @@ public class TaskQueue {
                     failure.getClass().getSimpleName(),
                     1,
                     Values.now());
-        }finally {
+        } finally {
             execution.remove();
         }
     }

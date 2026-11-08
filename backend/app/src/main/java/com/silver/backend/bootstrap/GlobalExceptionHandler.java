@@ -29,39 +29,33 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({
-            HttpMessageNotReadableException.class,
-            MissingServletRequestParameterException.class,
-            MethodArgumentTypeMismatchException.class
+        HttpMessageNotReadableException.class,
+        MissingServletRequestParameterException.class,
+        MethodArgumentTypeMismatchException.class
     })
     public ResponseEntity<?> badRequest(Exception e, HttpServletRequest r) {
-        for (Throwable cause =  e; cause != null; cause = cause.getCause()) {
+        for (Throwable cause = e; cause != null; cause = cause.getCause()) {
             if (cause instanceof ApiException expected) {
                 return httpErrors.response(r, expected);
             }
         }
-        return httpErrors.response(r,
-                new ApiException(400, "BAD_REQUEST", "请求格式不正确"));
+        return httpErrors.response(r, new ApiException(400, "BAD_REQUEST", "请求格式不正确"));
     }
 
-    @ExceptionHandler({
-            NoResourceFoundException.class,
-            NoHandlerFoundException.class
-    })
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
     public ResponseEntity<?> missing(Exception e, HttpServletRequest r) {
-        return httpErrors.response(r,
-                new ApiException(404, "NOT_FOUND", "接口不存在"));
+        return httpErrors.response(r, new ApiException(404, "NOT_FOUND", "接口不存在"));
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public ResponseEntity<?> badMediaType(Exception e, HttpServletRequest r) {
-        return httpErrors.response(r,
-                new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "请求Content-Type不受支持"));
+        return httpErrors.response(
+                r, new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "请求Content-Type不受支持"));
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<?> badRequestMethod(Exception e, HttpServletRequest r) {
-        return httpErrors.response(r,
-                new ApiException(405, "BAD_REQUEST", "HTTP方法不受支持"));
+        return httpErrors.response(r, new ApiException(405, "BAD_REQUEST", "HTTP方法不受支持"));
     }
 
     @ExceptionHandler(DataAccessException.class)
@@ -69,10 +63,8 @@ public class GlobalExceptionHandler {
         logger.error(
                 "Database error requestId={}, type={}",
                 r.getAttribute("requestId"),
-                e.getClass().getSimpleName()
-        );
-        return httpErrors.response(r,
-                new ApiException(503, "SERVICE_UNAVAILABLE", "数据库暂时不可用"));
+                e.getClass().getSimpleName());
+        return httpErrors.response(r, new ApiException(503, "SERVICE_UNAVAILABLE", "数据库暂时不可用"));
     }
 
     @ExceptionHandler(Exception.class)
@@ -80,9 +72,7 @@ public class GlobalExceptionHandler {
         logger.error(
                 "Unhandled error requestId={}, type={}",
                 r.getAttribute("requestId"),
-                e.getClass().getSimpleName()
-        );
-        return httpErrors.response(r,
-                new ApiException(500, "INTERNAL_ERROR", "服务内部错误"));
+                e.getClass().getSimpleName());
+        return httpErrors.response(r, new ApiException(500, "INTERNAL_ERROR", "服务内部错误"));
     }
 }

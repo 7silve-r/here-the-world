@@ -6,8 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class Values {
-    private Values() {
-    }
+    private Values() {}
 
     public static String id() {
         return UUID.randomUUID().toString();
@@ -22,7 +21,7 @@ public final class Values {
     }
 
     public static String time(Long millis) {
-        return millis ==  null ? null : time(millis.longValue());
+        return millis == null ? null : time(millis.longValue());
     }
 
     public static int length(String value) {
@@ -30,9 +29,7 @@ public final class Values {
     }
 
     public static String excerpt(String value, int max) {
-        return length(value) <= max ?
-                value:
-                value.substring(0, value.offsetByCodePoints(0, max));
+        return length(value) <= max ? value : value.substring(0, value.offsetByCodePoints(0, max));
     }
 
     public static Map<String, Object> map(Object... pairs) {
