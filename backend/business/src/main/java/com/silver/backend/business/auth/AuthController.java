@@ -25,7 +25,7 @@ public class AuthController {
     @Value("${htw.secure-cookies:true}")
     private boolean secure;
 
-    public static String cookie(HttpServletRequest request, String name) {
+    public static String getCookie(HttpServletRequest request, String name) {
         if (request.getCookies() != null) {
             for (Cookie c : request.getCookies()) {
                 if (name.equals(c.getName())) {
@@ -51,7 +51,7 @@ public class AuthController {
 
     @GetMapping("/csrf")
     public ResponseEntity<?> csrf(HttpServletRequest req,  HttpServletResponse res) {
-        String context = cookie(req, "htw_csrf_context");
+        String context = getCookie(req, "htw_csrf_context");
         if (context == null || !context.matches("[A-Za-z0-9_-]{43}")) {
             context = crypto.randomToken();
         }
