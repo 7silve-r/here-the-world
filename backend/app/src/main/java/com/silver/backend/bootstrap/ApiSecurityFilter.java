@@ -100,7 +100,7 @@ public class ApiSecurityFilter extends OncePerRequestFilter {
                         if (n > 0) {
                             count += n;
                             if (count > 1_048_576) {
-                                throw new ApiException(413, "FLIE_TOO_LARGE", "JSON 请求过大");
+                                throw new ApiException(413, "FILE_TOO_LARGE", "JSON 请求过大");
                             }
                         }
                     }
