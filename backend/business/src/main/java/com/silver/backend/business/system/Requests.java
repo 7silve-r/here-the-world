@@ -152,7 +152,7 @@ public class Requests {
                     validate(
                             (Map<String, Object>) schema.get("items"),
                             list.get(i),
-                            join(path, "[" + i + "]"));
+                            path + "[" + i + "]");
                 }
             }
             default -> {}
