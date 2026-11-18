@@ -12,6 +12,9 @@ spring:
       maximum-pool-size: 10
   flyway:
     enabled: true
+  jackson:
+    deserialization:
+      use-big-decimal-for-floats: true
   mail:
     host: ${SMTP_HOST:127.0.0.1}
     port: ${SMTP_PORT:1025}

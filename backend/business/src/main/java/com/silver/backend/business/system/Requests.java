@@ -5,9 +5,9 @@ import com.silver.backend.common.Values;
 import com.silver.backend.infrastructure.JsonCodec;
 import org.springframework.stereotype.Component;
 
-import javax.swing.*;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
@@ -122,13 +122,21 @@ public class Requests {
                 }
             }
             case "integer" -> {
-                if (!(value instanceof Number)
-                        || ((Number) value).doubleValue() != ((Number) value).longValue()) {
+                if (!(value instanceof Number number)) {
                     throw ApiException.invalid(path, "INVALID_FORMAT", "应为整数");
                 }
-                long n = ((Number) value).longValue();
-                if (n < ((Number) schema.getOrDefault("minimum", Long.MIN_VALUE)).longValue()
-                        || n > ((Number) schema.getOrDefault("maximum", Long.MAX_VALUE)).longValue()) {
+                BigDecimal n;
+                try {
+                    n = new BigDecimal(number.toString());
+                } catch (NumberFormatException invalid) {
+                    throw ApiException.invalid(path, "INVALID_FORMAT", "应为整数");
+                }
+                if (n.scale() > 0 && n.stripTrailingZeros().scale() > 0) {
+                    throw ApiException.invalid(path, "INVALID_FORMAT", "应为整数");
+                }
+                BigDecimal minimum = new BigDecimal(schema.getOrDefault("minimum", Long.MIN_VALUE).toString());
+                BigDecimal maximum = new BigDecimal(schema.getOrDefault("maximum", Long.MAX_VALUE).toString());
+                if (n.compareTo(minimum) < 0 || n.compareTo(maximum) > 0) {
                     throw ApiException.invalid(path, "OUT_OF_RANGE", "数字超出范围");
                 }
             }
