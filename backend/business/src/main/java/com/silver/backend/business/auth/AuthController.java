@@ -4,6 +4,7 @@ import com.silver.backend.business.HttpReplies;
 import com.silver.backend.business.dto.RegisterInput;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.business.system.Requests;
+import com.silver.backend.common.Reply;
 import com.silver.backend.infrastructure.Crypto;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -74,5 +75,6 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody Map<String, Object> body, HttpServletRequest req) {
         var input = requests.decode("RegisterInput", body, RegisterInput.class);
         limit(req, input.email(), "register", 5, 3600);
+        return HttpReplies.reply(req, Reply.of(202, service.register(input)));
     }
 }
