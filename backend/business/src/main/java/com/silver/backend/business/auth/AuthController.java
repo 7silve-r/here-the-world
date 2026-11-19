@@ -2,6 +2,7 @@ package com.silver.backend.business.auth;
 
 import com.silver.backend.business.HttpReplies;
 import com.silver.backend.business.dto.RegisterInput;
+import com.silver.backend.business.dto.VerifyEmailInput;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.business.system.Requests;
 import com.silver.backend.common.Reply;
@@ -76,5 +77,12 @@ public class AuthController {
         var input = requests.decode("RegisterInput", body, RegisterInput.class);
         limit(req, input.email(), "register", 5, 3600);
         return HttpReplies.reply(req, Reply.of(202, service.register(input)));
+    }
+
+    @PostMapping("/verify-email")
+    public ResponseEntity<?> verify(@RequestBody Map<String, Object> body, HttpServletRequest req) {
+        var input = requests.decode("VerifyEmailInput", body, VerifyEmailInput.class);
+        limit(req, input.email(), "verify-email", 20, 60);
+        return HttpReplies.ok(req, service.verify(input));
     }
 }

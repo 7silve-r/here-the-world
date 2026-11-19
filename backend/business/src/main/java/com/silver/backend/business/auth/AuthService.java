@@ -1,8 +1,6 @@
 package com.silver.backend.business.auth;
 
-import com.silver.backend.business.dto.Csrf;
-import com.silver.backend.business.dto.MessageAccepted;
-import com.silver.backend.business.dto.RegisterInput;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.CodeRow;
 import com.silver.backend.business.persistence.SessionRow;
 import com.silver.backend.business.persistence.UserRow;
@@ -148,5 +146,47 @@ public class AuthService {
                     && Objects.equals(code.getCodeHash(), payload.get("proof"));
         }
         return false;
+    }
+
+    private UserRow lockedEmailUser(String email) {
+        UserRow hint = mapper.email(email);
+        if (hint == null) return null;
+        tx.lock(List.of("10:user:" + hint.getId()));
+        return mapper.user(hint.getId());
+    }
+
+    public Ack verify(VerifyEmailInput input) {
+        ApiException error = tx.write(
+            "05:email:" + input.email(),
+                () -> {
+                    UserRow user = lockedEmailUser(input.email());
+                    if (user != null && user.isEmailVerified()) {
+                        return null;
+                    }
+                    CodeRow code = user == null ? null : mapper.code(user.getId());
+                     if (code == null) {
+                         return new ApiException(422, "VERIFICATION_CODE_INVALID", "验证码不正确");
+                     }
+                     if (code.getExpiresAt() <= Values.now()) {
+                         return new ApiException(410, "VERIFICATION_CODE_EXPIRED", "验证码已过期");
+                     }
+                     if (code.getAttempts() >= 5) {
+                         return new ApiException(429, "VERIFICATION_ATTEMPTS_EXCEEDED", "验证尝试次数超限", List.of(), 60);
+                     }
+                     mapper.attempt(user.getId());
+                     if (!crypto.keyedDigest("verification", user.getId() + ":" + input.code())
+                             .equals(code.getCodeHash())) {
+                         return new ApiException(422, "VERIFICATION_CODE_INVALID", "验证码不正确");
+                     }
+                     user.setEmailVerified(true);
+                     mapper.updateUser(user);
+                     mapper.deleteCode(user.getId());
+                    return null;
+                }
+        );
+        if (error != null) {
+            throw error;
+        }
+        return new Ack(true);
     }
 }
