@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -134,5 +135,18 @@ public class AuthService {
                     return accepted();
                 }
         );
+    }
+
+    public boolean mailStillRelevant(Map<String, Object> payload) {
+        if ("VERIFY".equals(payload.get("purpose"))) {
+            UserRow user = mapper.user((String) payload.get("user"));
+            CodeRow code = mapper.code((String) payload.get("user"));
+            return user != null
+                    && !user.isEmailVerified()
+                    && code != null
+                    && code.getExpiresAt() > Values.now()
+                    && Objects.equals(code.getCodeHash(), payload.get("proof"));
+        }
+        return false;
     }
 }

@@ -37,4 +37,7 @@ public interface AuthMapper {
         VALUES (#{row.userId},#{row.codeHash},#{row.expiresAt},#{row.sentAt},#{row.attempts})
     """)
     void insertCode(CodeRow row);
+
+    @Select("SELECT * FROM users WHERE id=#{id}")
+    UserRow user(@Param("id") String id);
 }
