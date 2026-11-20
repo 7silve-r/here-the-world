@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:htw_test_${random.uuid};MODE=MySQL;DATABASE_TO_LOWER=TRUE
+    username: sa
+    password: ''
+  flyway:
+    enabled: true
+logging:
+  file:
+    name: ./target/backend-test.log
+htw:
+  secret: test-only-secret-with-at-least-thirty-two-bytes
+  storage-root: ./target/test-media
+  allowed-origins: http://localhost:5173
+  secure-cookies: true
+  jobs-enabled: false
