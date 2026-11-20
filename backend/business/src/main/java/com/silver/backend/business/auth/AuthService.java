@@ -189,4 +189,20 @@ public class AuthService {
         }
         return new Ack(true);
     }
+
+    public MessageAccepted resend(EmailInput input) {
+        return tx.write(
+                "05:email" + normalizeEmail(input.email()),
+                () -> {
+                    UserRow user = lockedEmailUser(input.email());
+                    if (user != null && !user.isEmailVerified()) {
+                        CodeRow code = mapper.code(user.getId());
+                        if (code == null || code.getSentAt() - Values.now() >= 60_000) {
+                            issueCode(user);
+                        }
+                    }
+                    return accepted();
+                }
+        );
+    }
 }
