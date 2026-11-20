@@ -5,10 +5,10 @@ import java.util.List;
 public class ApiException extends RuntimeException{
     public record Detail(String field, String reason, String message){}
 
-    private final int status;
-    private final String code;
-    private final List<Detail>  details;
-    private final Integer retryAfter;
+    public final int status;
+    public final String code;
+    public final List<Detail>  details;
+    public final Integer retryAfter;
 
     public ApiException(int status, String code, String message, List<Detail> details, Integer retryAfter) {
         super(message);
