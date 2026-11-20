@@ -1,0 +1,5322 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Here the World — Shared API Contract",
+    "version": "1.0.0-draft.2",
+    "description": "Development baseline agreed through this project documentation; endpoints are planned, not implemented. Business rules: api-contract.md. Responses use envelopes; all IDs are opaque strings. Unknown request fields are rejected. Public reads with a supplied invalid bearer token return 401."
+  },
+  "servers": [
+    {
+      "url": "/api/v1",
+      "description": "Same-origin browser API; use a frontend development proxy."
+    }
+  ],
+  "tags": [
+    {
+      "name": "System"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Profile"
+    },
+    {
+      "name": "Feed"
+    },
+    {
+      "name": "Works"
+    },
+    {
+      "name": "Interactions"
+    },
+    {
+      "name": "Comments"
+    },
+    {
+      "name": "Media"
+    }
+  ],
+  "paths": {
+    "/system/capabilities": {
+      "get": {
+        "operationId": "getCapabilities",
+        "tags": [
+          "System"
+        ],
+        "summary": "读取发布与上传限制",
+        "description": "",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Capabilities"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/csrf": {
+      "get": {
+        "operationId": "getCsrf",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "初始化 CSRF 上下文",
+        "description": "credentials: include; response is private no-store. Refresh at startup and after CSRF_INVALID.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "May set, rotate or clear scoped auth cookies. Frontend never reads this header."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Csrf"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "register",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "邮箱注册并发送验证邮件",
+        "description": "Creates a pending account and queues a verification email. Email verification and login are required to obtain an access token. An existing email returns 409 EMAIL_TAKEN. An existing username returns 409 USERNAME_TAKEN.",
+        "security": [
+          {
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "May set, rotate or clear scoped auth cookies. Frontend never reads this header."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MessageAccepted"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Email is already registered (EMAIL_TAKEN) or username is already taken (USERNAME_TAKEN).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "operationId": "verifyEmail",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "校验邮箱验证码",
+        "description": "",
+        "security": [
+          {
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "May set, rotate or clear scoped auth cookies. Frontend never reads this header."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ack"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/resend-verification": {
+      "post": {
+        "operationId": "resendVerification",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "重发邮箱验证邮件",
+        "description": "",
+        "security": [
+          {
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "May set, rotate or clear scoped auth cookies. Frontend never reads this header."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MessageAccepted"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "login",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "登录并建立会话",
+        "description": "",
+        "security": [
+          {
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Sets or clears scoped authentication cookies. Login and refresh set htw_refresh and htw_media. Logout and successful password changes clear both. Frontend JavaScript never reads the HttpOnly cookies."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthSession"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "refreshSession",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "轮换刷新凭证并签发 access token",
+        "description": "One in-flight refresh per browser client; refresh cookie required. Rotation and session revocation are server-owned.",
+        "security": [
+          {
+            "refreshCookie": [],
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Sets or clears scoped authentication cookies. Login and refresh set htw_refresh and htw_media. Logout and successful password changes clear both. Frontend JavaScript never reads the HttpOnly cookies."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/AuthSession"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "撤销当前会话并清除刷新 Cookie",
+        "description": "",
+        "security": [
+          {
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Sets or clears scoped authentication cookies. Login and refresh set htw_refresh and htw_media. Logout and successful password changes clear both. Frontend JavaScript never reads the HttpOnly cookies."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ack"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "operationId": "forgotPassword",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "发送密码重置邮件",
+        "description": "",
+        "security": [
+          {
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "May set, rotate or clear scoped auth cookies. Frontend never reads this header."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MessageAccepted"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "operationId": "resetPassword",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "用邮件凭证重置密码",
+        "description": "Reset token is single use. Revoke all sessions; next step is login.",
+        "security": [
+          {
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Sets or clears scoped authentication cookies. Login and refresh set htw_refresh and htw_media. Logout and successful password changes clear both. Frontend JavaScript never reads the HttpOnly cookies."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ack"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "operationId": "changePassword",
+        "tags": [
+          "Auth"
+        ],
+        "summary": "校验当前密码后修改密码",
+        "description": "Requires bearer token and CSRF context/header. Revoke all sessions and clear current refresh cookie. Next step is login.",
+        "security": [
+          {
+            "bearerAuth": [],
+            "csrfContext": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CsrfHeader"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Sets or clears scoped authentication cookies. Login and refresh set htw_refresh and htw_media. Logout and successful password changes clear both. Frontend JavaScript never reads the HttpOnly cookies."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ack"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "operationId": "getMe",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "读取当前账号私有资料",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Me"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateMe",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "修改昵称简介与头像",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfilePatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Me"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/settings": {
+      "get": {
+        "operationId": "getSettings",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "读取个人设置",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Settings"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSettings",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "修改个人设置",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingsPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Settings"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}": {
+      "get": {
+        "operationId": "getUser",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "读取公开个人主页资料",
+        "description": "",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PublicUser"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/users/{userId}/works": {
+      "get": {
+        "operationId": "listUserWorks",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "读取用户已发布作品",
+        "description": "Newest published first, then ID descending. Public published works only.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkPage"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/works": {
+      "get": {
+        "operationId": "listMyWorks",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "读取我的作品及发布状态",
+        "description": "Newest created first, then ID descending. Omitted status includes all nondeleted statuses.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PROCESSING",
+                "PUBLISHED",
+                "FAILED"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkPage"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/bookmarks": {
+      "get": {
+        "operationId": "listMyBookmarks",
+        "tags": [
+          "Profile"
+        ],
+        "summary": "读取我的收藏",
+        "description": "Newest bookmarked first; unavailable/deleted works are omitted.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkPage"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/feed": {
+      "get": {
+        "operationId": "getFeed",
+        "tags": [
+          "Feed"
+        ],
+        "summary": "读取随机但会话内稳定的作品流",
+        "description": "Omit cursor to create a 30-minute public feed snapshot with a random seed. Subsequent cursors preserve seed, cutoff, filters and position, independent of login identity; viewer state is calculated per request. Deleted/unavailable works are skipped. 410 FEED_SESSION_EXPIRED requires explicit refresh; do not silently reorder the current wall.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/FeedPage"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/works": {
+      "post": {
+        "operationId": "createWork",
+        "tags": [
+          "Works"
+        ],
+        "summary": "创建作品草稿",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "description": "Strong work version ETag, e.g. \"v3\"."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkDetail"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/works/{workId}": {
+      "get": {
+        "operationId": "getWork",
+        "tags": [
+          "Works"
+        ],
+        "summary": "读取作品详情或作者自己的草稿",
+        "description": "Published works are public. Nonpublic work is visible only to its author; others get 404.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "description": "Strong work version ETag, e.g. \"v3\"."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkDetail"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "operationId": "updateWork",
+        "tags": [
+          "Works"
+        ],
+        "summary": "完整保存草稿可编辑字段",
+        "description": "Only DRAFT or FAILED; kind cannot change. Successful save of FAILED work returns it to DRAFT. Published editing is outside v1.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "description": "Strong work version ETag, e.g. \"v3\"."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkDetail"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteWork",
+        "tags": [
+          "Works"
+        ],
+        "summary": "作者删除自己的作品",
+        "description": "Physically delete the work and its comments, likes, bookmarks and media associations. No tombstone is retained. A missing or already deleted work returns 404 WORK_NOT_FOUND. Deletion requires the current If-Match and returns Ack without an ETag.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ack"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/works/{workId}/publish": {
+      "post": {
+        "operationId": "publishWork",
+        "tags": [
+          "Works"
+        ],
+        "summary": "校验并提交发布",
+        "description": "All required assets READY: PUBLISHED (200); pending processing: PROCESSING (202). Re-publishing PROCESSING/PUBLISHED is a no-op if version matches.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "description": "Strong work version ETag, e.g. \"v3\"."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkDetail"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Publication accepted; poll GET work until PUBLISHED or FAILED.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 40
+                },
+                "description": "Strong work version ETag, e.g. \"v3\"."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/WorkDetail"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/works/{workId}/like": {
+      "put": {
+        "operationId": "likeWork",
+        "tags": [
+          "Interactions"
+        ],
+        "summary": "确保当前用户已点赞",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InteractionState"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unlikeWork",
+        "tags": [
+          "Interactions"
+        ],
+        "summary": "确保当前用户未点赞",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InteractionState"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/works/{workId}/bookmark": {
+      "put": {
+        "operationId": "bookmarkWork",
+        "tags": [
+          "Interactions"
+        ],
+        "summary": "确保当前用户已收藏",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InteractionState"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unbookmarkWork",
+        "tags": [
+          "Interactions"
+        ],
+        "summary": "确保当前用户未收藏",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/InteractionState"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/works/{workId}/comments": {
+      "get": {
+        "operationId": "listComments",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "按时间正序读取平层评论",
+        "description": "Ascending createdAt then ID; only published works. No threaded replies in v1.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Cursor"
+          },
+          {
+            "$ref": "#/components/parameters/Limit"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommentPage"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "发布评论",
+        "description": "",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "workId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Comment"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/comments/{commentId}": {
+      "delete": {
+        "operationId": "deleteComment",
+        "tags": [
+          "Comments"
+        ],
+        "summary": "评论作者或作品作者删除评论",
+        "description": "Physically delete the comment without retaining a tombstone. A missing or already deleted comment returns 404 COMMENT_NOT_FOUND. Counts are derived from remaining comments.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "commentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ack"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/uploads": {
+      "post": {
+        "operationId": "createUpload",
+        "tags": [
+          "Media"
+        ],
+        "summary": "申请单文件直传地址",
+        "description": "Ticket expires in 15 minutes. Send binary to uploadUrl as instructed; do not send application bearer/cookies to storage.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Idempotency"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/UploadTicket"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/uploads/{uploadId}/complete": {
+      "post": {
+        "operationId": "completeUpload",
+        "tags": [
+          "Media"
+        ],
+        "summary": "服务端校验对象并开始媒体处理",
+        "description": "Idempotent. Server verifies actual bytes/type; supplied size is only a hint. Poll asset state. A repeat returns current asset and 202.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadCompleteInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Asset"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/uploads/{uploadId}": {
+      "delete": {
+        "operationId": "cancelUpload",
+        "tags": [
+          "Media"
+        ],
+        "summary": "取消尚未完成的上传",
+        "description": "Only pending uploads; repeat cancellation succeeds. Already completed upload returns 409 UPLOAD_ALREADY_COMPLETED.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "uploadId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Ack"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/assets/{assetId}": {
+      "get": {
+        "operationId": "getAsset",
+        "tags": [
+          "Media"
+        ],
+        "summary": "读取媒体处理状态与可用资源",
+        "description": "Owner can read unattached/private assets. Others only read READY assets attached to a published work or public avatar; otherwise 404.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Asset"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/music-links/resolve": {
+      "post": {
+        "operationId": "resolveMusicLink",
+        "tags": [
+          "Media"
+        ],
+        "summary": "解析音乐分享链接并返回可用展示方式",
+        "description": "Allowlisted official metadata only. Unknown valid HTTPS music links degrade to EXTERNAL/PARTIAL; never promise an extractable audio URL.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MusicLinkInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/MusicLink"
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "maxLength": 100
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "requestId"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Non-2xx error; see shared status/code mapping. No data envelope.",
+            "headers": {
+              "X-Request-Id": {
+                "schema": {
+                  "type": "string",
+                  "maxLength": 100
+                }
+              },
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds; supplied on rate limiting or retryable service unavailability."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/public/assets/{assetId}/{variant}": {
+      "get": {
+        "operationId": "readPublicMedia",
+        "tags": [
+          "Media"
+        ],
+        "summary": "读取公开媒体文件",
+        "description": "Checks that the READY asset is referenced by a published work or a public avatar. Responses can be reused for 60 seconds. Removing the last public reference rejects subsequent origin requests. Existing fresh public caches can remain for up to 60 seconds.",
+        "security": [],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "variant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "file",
+                "thumbnail"
+              ]
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional byte range, for example bytes=0-1023."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media content. HEAD returns the same headers with an empty body.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "public, max-age=60, must-revalidate"
+              },
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Byte ranges are supported for media playback."
+              },
+              "Last-Modified": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "File modification timestamp in HTTP-date format."
+              }
+            },
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Requested byte range.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "public, max-age=60, must-revalidate"
+              },
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Byte ranges are supported for media playback."
+              },
+              "Last-Modified": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "File modification timestamp in HTTP-date format."
+              },
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified after authorization and visibility checks."
+          },
+          "default": {
+            "description": "Authentication, visibility, missing file or range error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "The requested byte range is outside the file.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Current resource size, for example bytes */1024."
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/private/assets/{assetId}/{variant}": {
+      "get": {
+        "operationId": "readPrivateMedia",
+        "tags": [
+          "Media"
+        ],
+        "summary": "读取私有媒体文件",
+        "description": "Valid session and asset ownership are checked on every request. The media cookie is accepted only for private media reads. The same URL supports GET, HEAD and byte-range playback.",
+        "security": [
+          {
+            "mediaCookie": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            }
+          },
+          {
+            "name": "variant",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "file",
+                "thumbnail"
+              ]
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional byte range, for example bytes=0-1023."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media content. HEAD returns the same headers with an empty body.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private, no-store"
+              },
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Byte ranges are supported for media playback."
+              },
+              "Last-Modified": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "File modification timestamp in HTTP-date format."
+              }
+            },
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "audio/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Requested byte range.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "private, no-store"
+              },
+              "Accept-Ranges": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Byte ranges are supported for media playback."
+              },
+              "Last-Modified": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "File modification timestamp in HTTP-date format."
+              },
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "*/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified after authorization and visibility checks."
+          },
+          "default": {
+            "description": "Authentication, visibility, missing file or range error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "416": {
+            "description": "The requested byte range is outside the file.",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Current resource size, for example bytes */1024."
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "refreshCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "htw_refresh"
+      },
+      "csrfContext": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "htw_csrf_context"
+      },
+      "mediaCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "htw_media",
+        "description": "HttpOnly media-read credential scoped to /api/v1/media/private/. Issued on login and refresh. Its lifetime is bounded by the existing session. Every private read checks session expiry, revocation and asset ownership. It authorizes private media GET and HEAD requests."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000
+          },
+          "requestId": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "details": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "field": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "reason": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "message": {
+                  "type": "string",
+                  "maxLength": 500
+                }
+              },
+              "required": [
+                "field",
+                "reason",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "requestId",
+          "details"
+        ]
+      },
+      "Ack": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "success": {
+            "const": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "MessageAccepted": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "const": true,
+            "type": "boolean"
+          },
+          "resendAfterSeconds": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "accepted",
+          "resendAfterSeconds"
+        ]
+      },
+      "Csrf": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "csrfToken": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "csrfToken",
+          "expiresAt"
+        ]
+      },
+      "Cover": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri-reference",
+            "maxLength": 4096,
+            "description": "Backend-provided media URL. May be a same-origin relative URI. Public media URLs are stable and cacheable for 60 seconds. Private media URLs are stable and require the media-read cookie or Bearer authentication."
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blurHash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "url",
+          "width",
+          "height",
+          "blurHash"
+        ]
+      },
+      "PublicUser": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 24,
+            "minLength": 3,
+            "pattern": "^[a-z0-9_]{3,24}$"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Backend-provided media URL. May be a same-origin relative URI. Public media URLs are stable and cacheable for 60 seconds. Private media URLs are stable and require the media-read cookie or Bearer authentication."
+          },
+          "publishedWorkCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "displayName",
+          "bio",
+          "avatarUrl",
+          "publishedWorkCount",
+          "createdAt"
+        ]
+      },
+      "Me": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 24,
+            "minLength": 3,
+            "pattern": "^[a-z0-9_]{3,24}$"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Backend-provided media URL. May be a same-origin relative URI. Public media URLs are stable and cacheable for 60 seconds. Private media URLs are stable and require the media-read cookie or Bearer authentication."
+          },
+          "publishedWorkCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "emailVerified": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "id",
+          "username",
+          "displayName",
+          "bio",
+          "avatarUrl",
+          "publishedWorkCount",
+          "createdAt",
+          "email",
+          "emailVerified"
+        ]
+      },
+      "AuthSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "maxLength": 8192,
+            "minLength": 1
+          },
+          "tokenType": {
+            "type": "string",
+            "const": "Bearer"
+          },
+          "expiresIn": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "user": {
+            "$ref": "#/components/schemas/Me"
+          }
+        },
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresIn",
+          "user"
+        ]
+      },
+      "RegisterInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 10,
+            "description": "10–128 Unicode code points; do not trim."
+          },
+          "username": {
+            "type": "string",
+            "maxLength": 24,
+            "minLength": 3,
+            "pattern": "^[a-z0-9_]{3,24}$"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password",
+          "username",
+          "displayName"
+        ]
+      },
+      "EmailInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "VerifyEmailInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 6,
+            "pattern": "^[0-9]{6}$"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
+      "LoginInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "ResetPasswordInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": "string",
+            "maxLength": 2048,
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 10,
+            "description": "10–128 Unicode code points; do not trim."
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
+      "ChangePasswordInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1
+          },
+          "newPassword": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 10,
+            "description": "10–128 Unicode code points; do not trim."
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "ProfilePatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1
+          },
+          "bio": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "avatarAssetId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "description": "Opaque string ID; never parse as a JavaScript number."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [],
+        "minProperties": 1
+      },
+      "Settings": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "SYSTEM",
+              "LIGHT",
+              "DARK"
+            ]
+          },
+          "motion": {
+            "type": "string",
+            "enum": [
+              "SYSTEM",
+              "REDUCED"
+            ]
+          },
+          "autoPlayMedia": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "theme",
+          "motion",
+          "autoPlayMedia"
+        ]
+      },
+      "SettingsPatch": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "theme": {
+            "type": "string",
+            "enum": [
+              "SYSTEM",
+              "LIGHT",
+              "DARK"
+            ]
+          },
+          "motion": {
+            "type": "string",
+            "enum": [
+              "SYSTEM",
+              "REDUCED"
+            ]
+          },
+          "autoPlayMedia": {
+            "type": "boolean"
+          }
+        },
+        "required": [],
+        "minProperties": 1
+      },
+      "Asset": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "WORK_MEDIA",
+              "WORK_COVER",
+              "AVATAR"
+            ]
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "IMAGE",
+              "VIDEO",
+              "AUDIO"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "UPLOADED",
+              "PROCESSING",
+              "READY",
+              "FAILED"
+            ]
+          },
+          "mimeType": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Backend-provided media URL. May be a same-origin relative URI. Public media URLs are stable and cacheable for 60 seconds. Private media URLs are stable and require the media-read cookie or Bearer authentication."
+          },
+          "thumbnailUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri-reference",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Backend-provided media URL. May be a same-origin relative URI. Public media URLs are stable and cacheable for 60 seconds. Private media URLs are stable and require the media-read cookie or Bearer authentication."
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "failureCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "purpose",
+          "mediaType",
+          "status",
+          "mimeType",
+          "sizeBytes",
+          "url",
+          "thumbnailUrl",
+          "width",
+          "height",
+          "durationMs",
+          "failureCode",
+          "createdAt"
+        ]
+      },
+      "UploadInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "WORK_MEDIA",
+              "WORK_COVER",
+              "AVATAR"
+            ]
+          },
+          "fileName": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1
+          },
+          "contentType": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "purpose",
+          "fileName",
+          "contentType",
+          "sizeBytes"
+        ]
+      },
+      "UploadTicket": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "uploadId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "assetId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "uploadUrl": {
+            "type": "string",
+            "format": "uri-reference",
+            "maxLength": 4096
+          },
+          "method": {
+            "type": "string",
+            "const": "PUT"
+          },
+          "headers": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "uploadId",
+          "assetId",
+          "uploadUrl",
+          "method",
+          "headers",
+          "expiresAt",
+          "maxBytes"
+        ]
+      },
+      "UploadCompleteInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "sizeBytes"
+        ]
+      },
+      "MusicLinkInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "input": {
+            "type": "string",
+            "maxLength": 4096,
+            "minLength": 1,
+            "description": "An HTTPS URL or copied share text containing exactly one supported HTTPS URL."
+          }
+        },
+        "required": [
+          "input"
+        ]
+      },
+      "MusicLink": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "NETEASE",
+              "QQ",
+              "KUGOU",
+              "SPOTIFY",
+              "APPLE_MUSIC",
+              "OTHER"
+            ]
+          },
+          "sourceUrl": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 4096
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "artist": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "coverUrl": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uri",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "metadataStatus": {
+            "type": "string",
+            "enum": [
+              "READY",
+              "PARTIAL"
+            ]
+          },
+          "playback": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "EXTERNAL",
+                  "EMBED"
+                ]
+              },
+              "embedUrl": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 4096
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "mode",
+              "embedUrl"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "sourceUrl",
+          "title",
+          "artist",
+          "coverUrl",
+          "metadataStatus",
+          "playback"
+        ]
+      },
+      "WorkInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "IMAGE",
+              "VIDEO",
+              "AUDIO",
+              "MUSIC_LINK"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120,
+            "minLength": 1
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "mediaAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 64,
+              "minLength": 1,
+              "description": "Opaque string ID; never parse as a JavaScript number."
+            },
+            "maxItems": 9,
+            "uniqueItems": true
+          },
+          "coverAssetId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "description": "Opaque string ID; never parse as a JavaScript number."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "musicLinkId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "description": "Opaque string ID; never parse as a JavaScript number."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "title",
+          "body",
+          "mediaAssetIds",
+          "coverAssetId",
+          "musicLinkId"
+        ],
+        "description": "Draft input; publish-time rules are in api-contract.md. kind is immutable after creation; ownership and asset readiness are validated by the server."
+      },
+      "WorkStats": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "likeCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "bookmarkCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "commentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "likeCount",
+          "bookmarkCount",
+          "commentCount"
+        ]
+      },
+      "ViewerState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "liked": {
+            "type": "boolean"
+          },
+          "bookmarked": {
+            "type": "boolean"
+          },
+          "isOwner": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "liked",
+          "bookmarked",
+          "isOwner"
+        ]
+      },
+      "WorkCard": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "IMAGE",
+              "VIDEO",
+              "AUDIO",
+              "MUSIC_LINK"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROCESSING",
+              "PUBLISHED",
+              "FAILED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 280
+          },
+          "author": {
+            "$ref": "#/components/schemas/PublicUser"
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/WorkStats"
+          },
+          "viewer": {
+            "$ref": "#/components/schemas/ViewerState"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "version",
+          "title",
+          "excerpt",
+          "author",
+          "cover",
+          "stats",
+          "viewer",
+          "createdAt",
+          "publishedAt"
+        ]
+      },
+      "WorkDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "IMAGE",
+              "VIDEO",
+              "AUDIO",
+              "MUSIC_LINK"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PROCESSING",
+              "PUBLISHED",
+              "FAILED"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "excerpt": {
+            "type": "string",
+            "maxLength": 280
+          },
+          "author": {
+            "$ref": "#/components/schemas/PublicUser"
+          },
+          "cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stats": {
+            "$ref": "#/components/schemas/WorkStats"
+          },
+          "viewer": {
+            "$ref": "#/components/schemas/ViewerState"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 20000
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Asset"
+            }
+          },
+          "coverAsset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Asset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "musicLink": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MusicLink"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "failureCode": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "version",
+          "title",
+          "excerpt",
+          "author",
+          "cover",
+          "stats",
+          "viewer",
+          "createdAt",
+          "publishedAt",
+          "body",
+          "assets",
+          "coverAsset",
+          "musicLink",
+          "updatedAt",
+          "failureCode"
+        ]
+      },
+      "InteractionState": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "workId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "liked": {
+            "type": "boolean"
+          },
+          "bookmarked": {
+            "type": "boolean"
+          },
+          "likeCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "bookmarkCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "workId",
+          "liked",
+          "bookmarked",
+          "likeCount",
+          "bookmarkCount"
+        ]
+      },
+      "CommentInput": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 1
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "workId": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "description": "Opaque string ID; never parse as a JavaScript number."
+          },
+          "author": {
+            "$ref": "#/components/schemas/PublicUser"
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "canDelete": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "workId",
+          "author",
+          "body",
+          "canDelete",
+          "createdAt"
+        ]
+      },
+      "WorkPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkCard"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "hasMore"
+        ]
+      },
+      "CommentPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "hasMore"
+        ]
+      },
+      "FeedPage": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkCard"
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4096
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hasMore": {
+            "type": "boolean"
+          },
+          "feedSession": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "maxLength": 64,
+                "minLength": 1,
+                "description": "Opaque string ID; never parse as a JavaScript number."
+              },
+              "expiresAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "required": [
+              "id",
+              "expiresAt"
+            ]
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor",
+          "hasMore",
+          "feedSession"
+        ]
+      },
+      "UploadRule": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "WORK_MEDIA",
+              "WORK_COVER",
+              "AVATAR"
+            ]
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "IMAGE",
+              "VIDEO",
+              "AUDIO"
+            ]
+          },
+          "allowedMimeTypes": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          "maxBytes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "purpose",
+          "mediaType",
+          "allowedMimeTypes",
+          "maxBytes"
+        ]
+      },
+      "Capabilities": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "uploadRules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UploadRule"
+            }
+          },
+          "maxImagesPerWork": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "maxTitleLength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "maxBodyLength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "maxCommentLength": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "verificationCodeTtlSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "resendAfterSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "musicEmbedProviders": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 50
+            }
+          }
+        },
+        "required": [
+          "uploadRules",
+          "maxImagesPerWork",
+          "maxTitleLength",
+          "maxBodyLength",
+          "maxCommentLength",
+          "verificationCodeTtlSeconds",
+          "resendAfterSeconds",
+          "musicEmbedProviders"
+        ]
+      }
+    },
+    "parameters": {
+      "Cursor": {
+        "name": "cursor",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "maxLength": 4096
+        },
+        "description": "Opaque server cursor. Omit for first page; do not modify or combine with different filters."
+      },
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 24
+        }
+      },
+      "CsrfHeader": {
+        "name": "X-CSRF-Token",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 2048,
+          "minLength": 1
+        },
+        "description": "Token from GET /auth/csrf. Cookie context must also be sent."
+      },
+      "Idempotency": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "One UUID per intent, reused for retries for 24 hours. Same key with different request returns 409 IDEMPOTENCY_CONFLICT."
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "maxLength": 40,
+          "pattern": "^\"v[1-9][0-9]*\"$"
+        },
+        "description": "Work version as a strong ETag, e.g. \"v3\". Missing: 428; stale: 412. Refetch instead of blind retries."
+      }
+    }
+  }
+}
