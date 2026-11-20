@@ -12,11 +12,9 @@ import java.util.Set;
 
 @Component
 public class FileStorage {
-    @Value("${htw.storage-root}")
-    private String directory;
     private final Path root;
 
-    public FileStorage() throws IOException {
+    public FileStorage( @Value("${htw.storage-root}") String directory) throws IOException {
         this.root = Path.of(directory).toAbsolutePath().normalize();
         Files.createDirectories(root);
         if (Files.isSymbolicLink(root)) {
