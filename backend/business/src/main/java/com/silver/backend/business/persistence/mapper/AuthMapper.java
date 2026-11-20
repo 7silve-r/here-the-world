@@ -21,7 +21,7 @@ public interface AuthMapper {
             users(id,email,username,password_hash,display_name,bio,
                   avatar_asset_id,email_verified,theme,motion,auto_play_media,created_at)
         VALUES (#{user.id},#{user.email},#{user.username},#{user.passwordHash},#{user.displayName},#{user.bio},
-                #{user.avaterAssetId},#{user.emailVerified},#{user.theme},#{user.motion},#{user.autoPlayMedia},#{user.createdAt})
+                #{user.avatarAssetId},#{user.emailVerified},#{user.theme},#{user.motion},#{user.autoPlayMedia},#{user.createdAt})
     """)
     void insertUser(UserRow user);
 
@@ -40,4 +40,17 @@ public interface AuthMapper {
 
     @Select("SELECT * FROM users WHERE id=#{id}")
     UserRow user(@Param("id") String id);
+
+    @Update("UPDATE verification_codes SET attemps=attemps+1 WHERE user_id=#{id}")
+    void attempt(@Param("id") String id);
+
+    @Update("""
+        UPDATE users 
+        SET password_hash=#{user.passwordHash},display_name=#{user.displayName},bio=#{user.bio},
+            avatar_asset_id=#{user.avatarAssetId},email_verified=#{user.emailVerified},theme=#{user.theme},
+            motion=#{user.motion},auto_play_media=#{user.autoPlayMedia}
+        WHERE id=#{user.id}
+    """)
+    void updateUser(UserRow user);
+
 }
