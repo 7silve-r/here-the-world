@@ -69,12 +69,11 @@ public class ApiSecurityFilter extends OncePerRequestFilter {
                         request.getHeader("X-CSRF-TOKEN"));
                 control.limit("auth-source", request.getRemoteAddr(), 180, 60);
             }
-            if (!request.getRequestURI().equals("/api/v1/media/upload")
-                && request.getContentLength() > 1_048_576) {
+            boolean binaryUpload = "/api/v1/media/upload".equals(request.getRequestURI());
+            if (!binaryUpload && request.getContentLength() > 1_048_576) {
                 throw new ApiException(413, "FILE_TOO_LARGE", "JSON 请求过大");
             }
-            filterChain.doFilter(
-                    request.getRequestURI().equals("api/v1/media/upload") ? request : boundJson(request), response);
+            filterChain.doFilter(binaryUpload ? request : boundJson(request), response);
         } catch (ApiException error) {
             errors.write(request, response, error);
         } catch (DataAccessException error) {
@@ -101,7 +100,7 @@ public class ApiSecurityFilter extends OncePerRequestFilter {
                         if (n > 0) {
                             count += n;
                             if (count > 1_048_576) {
-                                throw new ApiException(413, "FLIE_TOO_LARGE", "JSON 请求过大");
+                                throw new ApiException(413, "FILE_TOO_LARGE", "JSON 请求过大");
                             }
                         }
                     }
