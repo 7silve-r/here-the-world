@@ -1,0 +1,43 @@
+server:
+  port: ${PORT:8080}
+  address: ${BIND_ADDRESS:127.0.0.1}
+spring:
+  application:
+    name: here-the-world-reference
+  datasource:
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/htw_reference?useUnicode=true&characterEncoding=UTF-8&serverTimezone=UTC}
+    username: ${DB_USERNAME:htw}
+    password: ${DB_PASSWORD:}
+    hikari:
+      maximum-pool-size: 10
+  flyway:
+    enabled: true
+  mail:
+    host: ${SMTP_HOST:127.0.0.1}
+    port: ${SMTP_PORT:1025}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:false}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
+  web:
+    resources:
+      add-mappings: false
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+    jdbc-type-for-null: 'NULL'
+htw:
+  secret: ${HTW_SECRET:}
+  storage-root: ${MEDIA_ROOT:./.data/media}
+  public-api-base-url: ${PUBLIC_API_BASE_URL:http://localhost:8080/api/v1}
+  frontend-origin: ${FRONTEND_ORIGIN:http://localhost:5173}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173,http://localhost:8080}
+  secure-cookies: ${SECURE_COOKIES:true}
+  mail-from: ${MAIL_FROM:noreply@example.invalid}
+  jobs-enabled: ${JOBS_ENABLED:true}
+  ffmpeg: ${FFMPEG:ffmpeg}
+  ffprobe: ${FFPROBE:ffprobe}
