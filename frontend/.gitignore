@@ -1,0 +1,8 @@
+node_modules/
+dist/
+dist-real/
+.env.local
+*.tsbuildinfo
+test-results/
+*.md
+
