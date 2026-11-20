@@ -1,0 +1,26 @@
+100% Orange Juice character illustrations
+
+QP: https://fruitbatfactory.com/100orange/img/QP.png
+Suguri: https://fruitbatfactory.com/100orange/img/Suguri.png
+Marc: https://fruitbatfactory.com/100orange/img/Marc.png
+Kai & Marie Poppo: https://fruitbatfactory.com/100orange/img/Kai_%26_Marie_Poppo.png
+12 portraits: https://fruitbatfactory.com/100orange/img/avt/100OJ_Avatars_150.zip
+Character reference: https://fruitbatfactory.com/100orange/char.html
+Publisher's avatar downloads: https://fruitbatfactory.com/100orange/avatars.html
+
+Downloaded on 2026-11-07 from the official Fruitbat Factory website.
+The four 300 x 300 PNG files and twelve 150 x 150 JPEG portraits are unmodified official illustrations.
+Portraits: QP, Suguri, Marc, Kai, Marie Poppo, Sora, Hime, Fernet, Peat, Aru, Yuki, Tomomo.
+Characters and illustrations belong to Orange_Juice / Fruitbat Factory.
+These are decorative character cards, not user avatars or published works.
+
+Integration: roughly half of the 1-in-12 decorative wall slots use the twelve-character roster.
+Real work IDs, the infinite visual loop and the API contract remain unchanged.
+Character cards also decorate page headings, empty states and account pages.
+Navigation uses six character medallions and a contextual three-card deck.
+The collapsed navigation control retains a single small die button.
+Primary and selected action buttons use character medallions, foil and star feedback.
+Atmosphere is always enabled; system and account reduced-motion preferences still apply.
+Bundled demo post text and media references are maintained in src/mocks/seed.ts.
+demo/party-loop.webm animates the QP, Suguri and Marc cards; demo/tabletop-chimes.wav is original synthesized audio.
+Both demo media files are reproducible with scripts/generate-party-media.mjs.

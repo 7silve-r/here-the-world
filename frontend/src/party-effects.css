@@ -1,0 +1,352 @@
+/* Official character cards share the existing tabletop palette and controls. */
+.character-card {
+  --card-edge: #db9a42;
+  --card-color: #f7c9cc;
+  --card-tilt: -6deg;
+  position: relative;
+  display: block;
+  width: 120px;
+  aspect-ratio: 1;
+  flex: none;
+  isolation: isolate;
+  pointer-events: none;
+  user-select: none;
+  rotate: var(--card-tilt);
+  transition:
+    width 380ms var(--ease-gallery),
+    rotate 380ms var(--ease-gallery);
+}
+.character-card[data-character="suguri"] {
+  --card-edge: #79a8be;
+  --card-color: #c3dce9;
+  --card-tilt: 7deg;
+}
+.character-card > img {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: 3px solid #fff9e4;
+  border-radius: 5px;
+  box-shadow:
+    1px 4px 0 var(--card-edge),
+    0 10px 18px #8d693024;
+}
+.character-card-back {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 2px solid var(--card-edge);
+  border-radius: 5px;
+  background:
+    url("/media/tabletop-star.svg") center / 38% no-repeat,
+    repeating-linear-gradient(45deg, #fff8e944 0 7px, transparent 7px 14px),
+    var(--card-color);
+  rotate: -11deg;
+  translate: -8% 4%;
+}
+.character-card::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 3px;
+  border-radius: 3px;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    #fff8dcaa 48%,
+    #fff8dc22 58%,
+    transparent 72%
+  );
+  background-size: 300% 100%;
+  background-position: 150% 0;
+  opacity: 0;
+}
+.character-spark {
+  position: absolute;
+  z-index: 3;
+  width: 20%;
+  aspect-ratio: 1;
+  right: -9%;
+  top: -8%;
+  background: #f6bb4b;
+  clip-path: polygon(
+    50% 0,
+    61% 34%,
+    98% 38%,
+    70% 62%,
+    79% 98%,
+    50% 78%,
+    21% 98%,
+    30% 62%,
+    2% 38%,
+    39% 34%
+  );
+}
+.wall .decorative-tile {
+  --motif: #e8b252;
+  background-image: radial-gradient(
+    ellipse at center,
+    #fffae67a,
+    transparent 70%
+  );
+}
+.wall .decorative-tile[data-decoration="qp"] {
+  --tile-accent: #cf7896;
+  --tile-wash: #f2aac1;
+  --motif: #dc8ca6;
+  background-color: #f6d5cd;
+}
+.wall .decorative-tile[data-decoration="suguri"] {
+  --tile-accent: #6097b8;
+  --tile-wash: #91c6dd;
+  --motif: #78abc6;
+  background-color: #d6e8e9;
+}
+.wall .character-scene {
+  background:
+    radial-gradient(
+      circle at center,
+      #fffbedc2 0 30%,
+      transparent 30.5% 37%,
+      #fffbed80 37.5% 38%,
+      transparent 38.5% 46%,
+      #fffbed54 46.5% 47%,
+      transparent 47.5%
+    ),
+    repeating-conic-gradient(
+      from 15deg at center,
+      #fffcf035 0 18deg,
+      transparent 18deg 45deg
+    );
+}
+.character-scene .character-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: min(61%, 158px);
+}
+.wall-tile.is-selected .character-scene .character-card {
+  width: min(64%, 234px);
+  rotate: 0deg;
+}
+.wall-tile.is-selected .character-card::after {
+  animation: party-foil 850ms ease-out both;
+}
+.wall-tile.is-selected .character-spark {
+  animation: party-spark 1.8s ease-in-out infinite alternate;
+}
+.wall .wall-tile.is-selected::after {
+  background-image:
+    radial-gradient(circle at 0 0, #f9ca7250, transparent 26%),
+    radial-gradient(
+      circle at 100% 100%,
+      color-mix(in srgb, var(--tile-wash) 38%, transparent),
+      transparent 35%
+    );
+}
+.page-heading {
+  position: relative;
+  min-height: 112px;
+  padding-right: 148px;
+}
+.page-character {
+  position: absolute;
+  width: 102px;
+  right: 12px;
+  top: -14px;
+  animation: party-float 6s ease-in-out infinite;
+}
+.page-character::after {
+  animation: party-foil 8s 1s ease-in-out infinite;
+}
+.page-character .character-spark {
+  animation: party-spark 2.4s ease-in-out infinite alternate;
+}
+.empty .empty-character {
+  width: 92px;
+  margin: 0 auto 24px;
+}
+.auth-visual .portal-aperture {
+  display: none;
+}
+.portal-party {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: min(78%, 450px);
+  aspect-ratio: 1.3;
+  pointer-events: none;
+}
+.portal-party .character-card {
+  position: absolute;
+  width: 57%;
+  animation: party-float 6.4s ease-in-out infinite;
+}
+.portal-party .character-card:first-child {
+  --card-tilt: -12deg;
+  left: 0;
+  top: 21%;
+}
+.portal-party > .character-card:nth-child(2) {
+  --card-tilt: 10deg;
+  right: 0;
+  top: 0;
+  animation-delay: -2.4s;
+}
+.portal-party .character-card::after {
+  animation: party-foil 7s 2s ease-in-out infinite;
+}
+.portal-party > .character-card:nth-child(2)::after {
+  animation-delay: 3s;
+}
+.portal-party .character-spark {
+  animation: party-spark 2s ease-in-out infinite alternate;
+}
+.auth-visual::before {
+  width: 76px;
+  height: 76px;
+  left: 7%;
+  top: 76%;
+}
+.auth-visual::after {
+  top: 9%;
+  right: 9%;
+  width: 66px;
+  height: 66px;
+}
+.button.primary {
+  background: linear-gradient(135deg, #ffe1a0, #f6b354 70%, #f1a76b);
+}
+.button.primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ffe9b6, #ffc569 70%, #f5bb96);
+  box-shadow:
+    0 5px 0 #c58e45,
+    0 0 24px #ffc25a66;
+}
+.navigation .nav-links a:hover > svg:first-child {
+  animation: party-icon 420ms var(--ease-gallery);
+}
+.grid-card:hover .artwork {
+  box-shadow:
+    0 5px 0 #c9a37555,
+    0 12px 28px #e8b55238;
+}
+@keyframes party-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+@keyframes party-spark {
+  from {
+    opacity: 0.5;
+    scale: 0.7;
+    rotate: -12deg;
+  }
+  to {
+    opacity: 1;
+    scale: 1.1;
+    rotate: 12deg;
+  }
+}
+@keyframes party-foil {
+  0%,
+  60% {
+    opacity: 0;
+    background-position: 150% 0;
+  }
+  68% {
+    opacity: 0.65;
+  }
+  90%,
+  100% {
+    opacity: 0;
+    background-position: -50% 0;
+  }
+}
+@keyframes party-icon {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  40% {
+    rotate: -14deg;
+  }
+  75% {
+    rotate: 8deg;
+  }
+}
+@media (max-width: 700px) {
+  .page-heading {
+    padding-right: 92px;
+    min-height: 84px;
+  }
+  .page-character {
+    width: 66px;
+    top: -4px;
+    right: 6px;
+  }
+  .portal-party {
+    width: min(64%, 300px);
+  }
+  .auth-visual::after {
+    width: 36px;
+    height: 36px;
+  }
+  .auth-visual::before {
+    width: 50px;
+    height: 50px;
+  }
+}
+@media (max-width: 800px) {
+  .auth-visual {
+    opacity: 1;
+  }
+  .auth-visual .matrix-portal {
+    width: 160px;
+    right: 18px;
+    top: 80px;
+    transform: none;
+  }
+  .auth-visual .portal-party {
+    width: 90%;
+    top: 44%;
+  }
+  .auth-visual .portal-plane,
+  .auth-visual .portal-halo {
+    opacity: 0.18;
+  }
+  .auth-visual::before,
+  .auth-visual::after {
+    display: none;
+  }
+}
+[data-still] .character-card,
+[data-still] .character-card::after,
+[data-still] .character-spark,
+[data-still] .nav-links a > svg:first-child,
+html[data-motion="REDUCED"] .character-card,
+html[data-motion="REDUCED"] .character-card::after,
+html[data-motion="REDUCED"] .character-spark,
+html[data-motion="REDUCED"] .nav-links a > svg:first-child {
+  animation: none !important;
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .character-card,
+  .character-card::after,
+  .character-spark,
+  .navigation .nav-links a > svg:first-child {
+    animation: none !important;
+    transition: none !important;
+  }
+}
