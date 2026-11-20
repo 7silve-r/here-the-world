@@ -4,8 +4,7 @@ import lombok.Data;
 
 @Data
 public class ResetRow {
-    private String tokenHash,
-            userId;
+    private String tokenHash, userId;
     private long expiresAt;
     private boolean consumed;
 }

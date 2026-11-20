@@ -13,7 +13,6 @@ public class UserRow {
             avatarAssetId,
             theme,
             motion;
-    private boolean emailVerified,
-            autoPlayMedia;
+    private boolean emailVerified, autoPlayMedia;
     private long createdAt;
 }

@@ -14,10 +14,7 @@ public class AssetRow {
             playbackKey,
             thumbnailKey,
             failureCode;
-    private long sizeBytes,
-            createdAt;
-    private Integer width,
-            height;
-    private Long durationMs,
-            cleanedAt;
+    private long sizeBytes, createdAt;
+    private Integer width, height;
+    private Long durationMs, cleanedAt;
 }

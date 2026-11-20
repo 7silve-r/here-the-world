@@ -14,8 +14,6 @@ public class WorkRow {
             musicLinkId,
             failureCode,
             publishTaskId;
-    private long version,
-            createdAt,
-            updatedAt;
+    private long version, createdAt, updatedAt;
     private Long publishedAt;
 }

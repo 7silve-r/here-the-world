@@ -84,7 +84,8 @@ class CryptoTest {
         assertEquals(hash, newCrypto(SECRET).keyedDigest("verification", "user-1:000123"));
         assertNotEquals(hash, crypto.keyedDigest("limit", "user-1:000123"));
         assertNotEquals(hash, crypto.keyedDigest("verification", "user-1:000124"));
-        assertNotEquals(hash, newCrypto("x".repeat(32)).keyedDigest("verification", "user-1:000123"));
+        assertNotEquals(
+                hash, newCrypto("x".repeat(32)).keyedDigest("verification", "user-1:000123"));
     }
 
     @Test
@@ -118,7 +119,9 @@ class CryptoTest {
     void ticketKey() {
         String ticket = crypto.ticket("upload", Map.of("upload", "upload-1"), 60_000);
 
-        assertApi(400, "INVALID_TICKET",
+        assertApi(
+                400,
+                "INVALID_TICKET",
                 () -> newCrypto("x".repeat(32)).open("upload", ticket, "INVALID_TICKET"));
     }
 
@@ -135,10 +138,13 @@ class CryptoTest {
     void oldCursor() {
         String ticket = crypto.ticket("cursor", Map.of("session", "feed-1"), -60_000);
 
-        assertEquals("feed-1", crypto.open("cursor", ticket, "INVALID_CURSOR", false).get("session"));
-        assertApi(400, "INVALID_CURSOR",
-                () -> crypto.open("read", ticket, "INVALID_CURSOR", false));
-        assertApi(400, "INVALID_CURSOR",
+        assertEquals(
+                "feed-1", crypto.open("cursor", ticket, "INVALID_CURSOR", false).get("session"));
+        assertApi(
+                400, "INVALID_CURSOR", () -> crypto.open("read", ticket, "INVALID_CURSOR", false));
+        assertApi(
+                400,
+                "INVALID_CURSOR",
                 () -> crypto.open("cursor", tamper(ticket, 1), "INVALID_CURSOR", false));
     }
 
@@ -148,7 +154,9 @@ class CryptoTest {
     void ticketTamper(int part) {
         String ticket = crypto.ticket("upload", Map.of("upload", "upload-1"), 60_000);
 
-        assertApi(400, "INVALID_TICKET",
+        assertApi(
+                400,
+                "INVALID_TICKET",
                 () -> crypto.open("upload", tamper(ticket, part), "INVALID_TICKET"));
     }
 
@@ -169,8 +177,10 @@ class CryptoTest {
 
         assertTrue(token.matches("[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+"));
         assertEquals(new Viewer("user-1", "session-1"), crypto.verifyJwt(token));
-        Map<String, Object> body = json.readMap(new String(
-                DECODER.decode(token.split("\\.", -1)[1]), StandardCharsets.UTF_8));
+        Map<String, Object> body =
+                json.readMap(
+                        new String(
+                                DECODER.decode(token.split("\\.", -1)[1]), StandardCharsets.UTF_8));
         long issuedAt = ((Number) body.get("iat")).longValue();
         long expiresAt = ((Number) body.get("exp")).longValue();
         assertTrue(issuedAt >= before && issuedAt <= after);
@@ -207,10 +217,19 @@ class CryptoTest {
     @DisplayName("即使认证码正确，也拒绝非法 JWT 字段")
     void jwtClaims(String field) throws Exception {
         Map<String, Object> header = new LinkedHashMap<>(Map.of("alg", "HS256", "typ", "JWT"));
-        Map<String, Object> body = new LinkedHashMap<>(Map.of(
-                "iss", "here-the-world", "aud", "htw-api",
-                "sub", "user-1", "sid", "session-1",
-                "exp", System.currentTimeMillis() / 1000 + 900));
+        Map<String, Object> body =
+                new LinkedHashMap<>(
+                        Map.of(
+                                "iss",
+                                "here-the-world",
+                                "aud",
+                                "htw-api",
+                                "sub",
+                                "user-1",
+                                "sid",
+                                "session-1",
+                                "exp",
+                                System.currentTimeMillis() / 1000 + 900));
         if (header.containsKey(field)) {
             header.put(field, "invalid");
         } else {
@@ -265,8 +284,8 @@ class CryptoTest {
     void cipherKey() {
         String encrypted = crypto.encrypt("验证码：000123");
 
-        assertThrows(IllegalStateException.class,
-                () -> newCrypto("x".repeat(32)).decrypt(encrypted));
+        assertThrows(
+                IllegalStateException.class, () -> newCrypto("x".repeat(32)).decrypt(encrypted));
     }
 
     private Crypto newCrypto(String secret) {
@@ -290,10 +309,14 @@ class CryptoTest {
     }
 
     private String signJwt(Map<String, Object> header, Map<String, Object> body) throws Exception {
-        String content = ENCODER.encodeToString(json.write(header).getBytes(StandardCharsets.UTF_8))
-                + "." + ENCODER.encodeToString(json.write(body).getBytes(StandardCharsets.UTF_8));
+        String content =
+                ENCODER.encodeToString(json.write(header).getBytes(StandardCharsets.UTF_8))
+                        + "."
+                        + ENCODER.encodeToString(json.write(body).getBytes(StandardCharsets.UTF_8));
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(new SecretKeySpec(SECRET.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-        return content + "." + ENCODER.encodeToString(mac.doFinal(content.getBytes(StandardCharsets.UTF_8)));
+        return content
+                + "."
+                + ENCODER.encodeToString(mac.doFinal(content.getBytes(StandardCharsets.UTF_8)));
     }
 }

@@ -2,15 +2,16 @@ package com.silver.backend.common;
 
 import java.util.List;
 
-public class ApiException extends RuntimeException{
-    public record Detail(String field, String reason, String message){}
+public class ApiException extends RuntimeException {
+    public record Detail(String field, String reason, String message) {}
 
     public final int status;
     public final String code;
-    public final List<Detail>  details;
+    public final List<Detail> details;
     public final Integer retryAfter;
 
-    public ApiException(int status, String code, String message, List<Detail> details, Integer retryAfter) {
+    public ApiException(
+            int status, String code, String message, List<Detail> details, Integer retryAfter) {
         super(message);
         this.status = status;
         this.code = code;
@@ -29,7 +30,6 @@ public class ApiException extends RuntimeException{
                 "VALIDATION_FAILED",
                 message,
                 List.of(new Detail(field, reason, message)),
-                null
-        );
+                null);
     }
 }

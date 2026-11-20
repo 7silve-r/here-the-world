@@ -14,7 +14,7 @@ import java.util.Set;
 public class FileStorage {
     private final Path root;
 
-    public FileStorage( @Value("${htw.storage-root}") String directory) throws IOException {
+    public FileStorage(@Value("${htw.storage-root}") String directory) throws IOException {
         this.root = Path.of(directory).toAbsolutePath().normalize();
         Files.createDirectories(root);
         if (Files.isSymbolicLink(root)) {
@@ -40,13 +40,11 @@ public class FileStorage {
         return path;
     }
 
-    public long write(String key,
-                      InputStream input,
-                      long limit) throws IOException {
+    public long write(String key, InputStream input, long limit) throws IOException {
         Path target = this.path(key);
         Files.createDirectories(target.getParent());
         Path temp = Files.createTempFile(target.getParent(), "upload-", ".part");
-        try{
+        try {
             long count = 0L;
             byte[] buffer = new byte[64 * 1024];
             try (OutputStream output = Files.newOutputStream(temp, StandardOpenOption.WRITE)) {
@@ -56,13 +54,12 @@ public class FileStorage {
                     if (count > limit) {
                         throw new ApiException(413, "FILE_TOO_LARGE", "文件过大");
                     }
-                    output.write(buffer,0, n);
+                    output.write(buffer, 0, n);
                 }
             }
             Files.move(temp, target, StandardCopyOption.ATOMIC_MOVE);
             return count;
-        }
-        finally{
+        } finally {
             Files.deleteIfExists(temp);
         }
     }
@@ -84,8 +81,6 @@ public class FileStorage {
     }
 
     public InputStream read(String key) throws IOException {
-        return Files.newInputStream(path(key),
-                                    StandardOpenOption.READ,
-                                    LinkOption.NOFOLLOW_LINKS);
+        return Files.newInputStream(path(key), StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
     }
 }

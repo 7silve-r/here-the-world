@@ -16,16 +16,15 @@ public class HttpErrors {
     @Autowired
     private JsonCodec json;
 
-    public ApiError body(HttpServletRequest request,
-                         ApiException exception) {
-        return new ApiError(exception.code,
+    public ApiError body(HttpServletRequest request, ApiException exception) {
+        return new ApiError(
+                exception.code,
                 exception.getMessage(),
                 (String) request.getAttribute("requestId"),
                 exception.details);
     }
 
-    public ResponseEntity<ApiError> response(HttpServletRequest request,
-                                             ApiException exception) {
+    public ResponseEntity<ApiError> response(HttpServletRequest request, ApiException exception) {
         ResponseEntity.BodyBuilder builder = ResponseEntity.status(exception.status);
         if (exception.retryAfter != null) {
             builder.header("Retry-After", exception.retryAfter.toString());
@@ -33,9 +32,9 @@ public class HttpErrors {
         return builder.body(body(request, exception));
     }
 
-    public void write(HttpServletRequest request,
-                      HttpServletResponse response,
-                      ApiException exception) throws IOException {
+    public void write(
+            HttpServletRequest request, HttpServletResponse response, ApiException exception)
+            throws IOException {
         response.setStatus(exception.status);
         response.setContentType("application/json");
         response.setCharacterEncoding("UTF-8");

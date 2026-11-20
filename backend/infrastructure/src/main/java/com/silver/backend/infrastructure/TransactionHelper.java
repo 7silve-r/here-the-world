@@ -20,23 +20,23 @@ public class TransactionHelper {
     @Mapper
     public interface LockMapper {
         @Insert("""
-            INSERT INTO resource_locks(lock_key,touched_at) 
+            INSERT INTO resource_locks(lock_key,touched_at)
             VALUES (#{key},#{now})
             ON DUPLICATE KEY UPDATE touched_at=#{now}
             """)
         void acquire(@Param("key") String key, @Param("now") long now);
 
         @Select("""
-            SELECT lock_key 
+            SELECT lock_key
             FROM resource_locks
             WHERE touched_at<#{before}
-            ORDER BY touched_at,lock_key 
+            ORDER BY touched_at,lock_key
             LIMIT 1000
             """)
         List<String> stale(long before);
 
         @Delete("""
-            DELETE FROM resource_locks 
+            DELETE FROM resource_locks
             WHERE lock_key=#{key} AND touched_at<#{before}
            """)
         void cleanup(@Param("key") String key, @Param("before") long before);
@@ -56,20 +56,19 @@ public class TransactionHelper {
     }
 
     public void lock(Collection<String> resources) {
-        if (!TransactionSynchronizationManager.isActualTransactionActive()){
+        if (!TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("Resource locks require a transaction");
         }
         Held held =
-                TransactionSynchronizationManager
-                        .getSynchronizations()
-                        .stream()
+                TransactionSynchronizationManager.getSynchronizations().stream()
                         .filter(Held.class::isInstance)
                         .map(Held.class::cast)
                         .findFirst()
                         .orElseGet(
                                 () -> {
                                     var state = new Held();
-                                    TransactionSynchronizationManager.registerSynchronization(state);
+                                    TransactionSynchronizationManager.registerSynchronization(
+                                            state);
                                     return state;
                                 });
         for (String resource : new TreeSet<>(resources)) {
@@ -97,8 +96,7 @@ public class TransactionHelper {
                 () -> {
                     lock(resources);
                     return action.get();
-                }
-        );
+                });
     }
 
     public void run(Runnable action) {
@@ -106,8 +104,7 @@ public class TransactionHelper {
                 () -> {
                     action.run();
                     return null;
-                }
-        );
+                });
     }
 
     public void run(String resource, Runnable action) {
@@ -120,31 +117,24 @@ public class TransactionHelper {
                 () -> {
                     action.run();
                     return null;
-                }
-        );
+                });
     }
 
     public void cleanupLocks() {
         long before = System.currentTimeMillis() - 172_800_000L;
         for (String key : locks.stale(before)) {
-            this.run(
-                    () -> locks.cleanup(key, before)
-            );
+            this.run(() -> locks.cleanup(key, before));
         }
     }
 
     private static String digest(String resource) {
         try {
-            return HexFormat
-                    .of()
+            return HexFormat.of()
                     .formatHex(
-                            MessageDigest
-                                    .getInstance("SHA-256")
-                                    .digest(resource.getBytes(StandardCharsets.UTF_8))
-                    );
+                            MessageDigest.getInstance("SHA-256")
+                                    .digest(resource.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException impossible) {
             throw new IllegalStateException(impossible);
         }
     }
-
 }
