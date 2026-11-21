@@ -23,7 +23,7 @@ public interface AuthMapper {
         VALUES (#{user.id},#{user.email},#{user.username},#{user.passwordHash},#{user.displayName},#{user.bio},
                 #{user.avatarAssetId},#{user.emailVerified},#{user.theme},#{user.motion},#{user.autoPlayMedia},#{user.createdAt})
     """)
-    void insertUser(UserRow user);
+    void insertUser(@Param("user") UserRow user);
 
     @Select("SELECT * FROM verification_codes WHERE user_id=#{id}")
     CodeRow code(@Param("id") String id);
@@ -36,7 +36,7 @@ public interface AuthMapper {
             verification_codes(user_id,code_hash,expires_at,sent_at,attempts)
         VALUES (#{row.userId},#{row.codeHash},#{row.expiresAt},#{row.sentAt},#{row.attempts})
     """)
-    void insertCode(CodeRow row);
+    void insertCode(@Param("row") CodeRow row);
 
     @Select("SELECT * FROM users WHERE id=#{id}")
     UserRow user(@Param("id") String id);
@@ -51,6 +51,6 @@ public interface AuthMapper {
             motion=#{user.motion},auto_play_media=#{user.autoPlayMedia}
         WHERE id=#{user.id}
     """)
-    void updateUser(UserRow user);
+    void updateUser(@Param("user") UserRow user);
 
 }
