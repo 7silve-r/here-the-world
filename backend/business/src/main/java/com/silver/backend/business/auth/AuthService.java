@@ -26,21 +26,21 @@ import java.util.Objects;
 @Service
 public class AuthService {
 
-    @Autowired
-    private Crypto crypto;
+    private final Crypto crypto;
     @Autowired
     private AuthMapper mapper;
     @Autowired
     private TransactionHelper tx;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
     @Autowired
     private TaskQueue taskQueue;
     @Autowired
     private Views views;
     private final String dummy;
 
-    public AuthService() {
+    public AuthService(Crypto crypto, PasswordEncoder passwordEncoder) {
+        this.crypto = crypto;
+        this.passwordEncoder = passwordEncoder;
         this.dummy = passwordEncoder.encode(crypto.randomToken());
     }
 
