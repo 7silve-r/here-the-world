@@ -17,7 +17,7 @@ public interface AssetMapper {
     @Select("""
         SELECT COUNT(*) 
         FROM works AS w 
-        WHERE (w.cover_asset_id=#{id}
+        WHERE w.status='PUBLISHED' AND (w.cover_asset_id=#{id}
             OR EXISTS (
                    SELECT 1
                    FROM work_assets wa
