@@ -105,4 +105,13 @@ public class AuthController {
         setCookie(res, "htw_media", result.media(), result.remainingSeconds());
         return HttpReplies.ok(req, result.data());
     }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(HttpServletRequest req,  HttpServletResponse res) {
+        control.limit("refresh-source", req.getRemoteAddr(), 120, 60);
+        AuthService.LoginResult result = service.refresh(getCookie(req, "htw_refresh"));
+        setCookie(res, "htw_refresh", result.refresh(), result.remainingSeconds());
+        setCookie(res, "htw_media", result.media(), result.remainingSeconds());
+        return HttpReplies.ok(req, result.data());
+    }
 }
