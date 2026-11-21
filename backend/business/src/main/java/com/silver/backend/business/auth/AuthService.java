@@ -301,7 +301,7 @@ public class AuthService {
         );
     }
 
-    public MessageAccepted forget(EmailInput input) {
+    public MessageAccepted forgot(EmailInput input) {
         return tx.write(
                 "05:email:" + normalizeEmail(input.email()),
                 () -> {

@@ -123,10 +123,10 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forget(@RequestBody Map<String, Object> body, HttpServletRequest req) {
+    public ResponseEntity<?> forgot(@RequestBody Map<String, Object> body, HttpServletRequest req) {
         EmailInput input = requests.decode("EmailInput", body, EmailInput.class);
-        limit(req, input.email(), "forget", 1, 60);
-        return HttpReplies.reply(req, Reply.of(202, service.forget(input)));
+        limit(req, input.email(), "forgot", 1, 60);
+        return HttpReplies.reply(req, Reply.of(202, service.forgot(input)));
     }
 
     @PostMapping("/reset-password")
