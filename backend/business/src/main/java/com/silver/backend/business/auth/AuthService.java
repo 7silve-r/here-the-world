@@ -3,6 +3,7 @@ package com.silver.backend.business.auth;
 import com.silver.backend.business.Views;
 import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.CodeRow;
+import com.silver.backend.business.persistence.ResetRow;
 import com.silver.backend.business.persistence.SessionRow;
 import com.silver.backend.business.persistence.UserRow;
 import com.silver.backend.business.persistence.mapper.AuthMapper;
@@ -37,6 +38,8 @@ public class AuthService {
     @Autowired
     private Views views;
     private final String dummy;
+    @Value("${htw.frontend-origin}")
+    private String frontend;
 
     public AuthService(Crypto crypto, PasswordEncoder passwordEncoder) {
         this.crypto = crypto;
@@ -290,6 +293,41 @@ public class AuthService {
                         }
                     }
                     return new Ack(true);
+                }
+        );
+    }
+
+    public MessageAccepted forget(EmailInput input) {
+        return tx.write(
+                "05:email:" + normalizeEmail(input.email()),
+                () -> {
+                    UserRow user = lockedEmailUser(input.email());
+                    if (user != null && user.isEmailVerified()) {
+                        String token = crypto.randomToken();
+                        mapper.consumeResets(user.getId());
+                        ResetRow row = new ResetRow();
+                        row.setTokenHash(crypto.digest(token));
+                        row.setUserId(user.getId());
+                        row.setExpiresAt(Values.now() + 1_800_000);
+                        row.setConsumed(false);
+                        mapper.insertReset(row);
+                        taskQueue.enqueue(
+                                "MAIL",
+                                Values.map(
+                                        "purpose",
+                                        "RESET",
+                                        "user",
+                                        user.getId(),
+                                        "proof",
+                                        row.getTokenHash(),
+                                        "email",
+                                        user.getEmail(),
+                                        "subject",
+                                        "Here the World 重置密码",
+                                        "body",
+                                        "30 分钟内打开以下链接：\n" + frontend + "/reset-password#token=" + token));
+                    }
+                    return accepted();
                 }
         );
     }
