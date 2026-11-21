@@ -1,6 +1,7 @@
 package com.silver.backend.business.auth;
 
 import com.silver.backend.business.HttpReplies;
+import com.silver.backend.business.RequestContext;
 import com.silver.backend.business.dto.*;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.business.system.Requests;
@@ -133,6 +134,16 @@ public class AuthController {
             @RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
         ResetPasswordInput input = requests.decode("ResetPasswordInput", body, ResetPasswordInput.class);
         Ack result = service.reset(input);
+        setCookie(res, "htw_refresh", "", 0);
+        setCookie(res, "htw_media", "", 0);
+        return  HttpReplies.ok(req, result);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> change(
+            @RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
+        ChangePasswordInput input = requests.decode("ChangePasswordInput", body, ChangePasswordInput.class);
+        Ack result = service.change(RequestContext.viewer(req), input);
         setCookie(res, "htw_refresh", "", 0);
         setCookie(res, "htw_media", "", 0);
         return  HttpReplies.ok(req, result);
