@@ -66,7 +66,7 @@ public interface AuthMapper {
     @Update("UPDATE sessions SET refresh_hash=#{row.refreshHash},revoked=#{row.revoked} WHERE id=#{row.id}")
     void updateSession(@Param("row") SessionRow row);
 
-    @Update("UPDATE password_resets SET consumed=TRUE WHERE id=#{id}")
+    @Update("UPDATE password_resets SET consumed=TRUE WHERE user_id=#{id}")
     void consumeResets(@Param("id") String id);
 
     @Insert("""
