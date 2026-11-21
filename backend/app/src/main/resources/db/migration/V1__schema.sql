@@ -20,6 +20,7 @@ CREATE TABLE users
     auto_play_media BOOLEAN       NOT NULL,
     created_at      BIGINT        NOT NULL
 );
+CREATE INDEX idx_user_avatar ON users(avatar_asset_id);
 
 CREATE TABLE sessions
 (
