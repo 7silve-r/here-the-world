@@ -14,6 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.Objects;
+
 @Component
 public class Views {
     @Autowired
@@ -39,7 +41,7 @@ public class Views {
             return null;
         }
         boolean publicMedia = publicAsset(a.getId());
-        if (!publicMedia && a.getOwnerId() != viewer.userId()) {
+        if (!publicMedia && !Objects.equals(a.getOwnerId(), viewer.userId())) {
             return null;
         }
         return baseUrl
