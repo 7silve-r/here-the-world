@@ -199,7 +199,7 @@ public class AuthService {
                     UserRow user = lockedEmailUser(email);
                     if (user != null && !user.isEmailVerified()) {
                         CodeRow code = mapper.code(user.getId());
-                        if (code == null || code.getSentAt() - Values.now() >= 60_000) {
+                        if (code == null || Values.now() - code.getSentAt() >= 60_000) {
                             issueCode(user);
                         }
                     }
