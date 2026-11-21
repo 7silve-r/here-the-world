@@ -259,4 +259,21 @@ public class AuthService {
                 }
         );
     }
+
+    public LoginResult refresh(String token) {
+        SessionRow hint = token == null ? null : mapper.refresh(crypto.digest(token));
+        return tx.write(
+                hint == null ? List.of() : List.of("10:user:" + hint.getUserId()),
+                () -> {
+                    SessionRow row = token == null ? null : mapper.refresh(crypto.digest(token));
+                    if (row == null || row.isRevoked() || row.getExpiresAt() <= Values.now()) {
+                        throw new ApiException(401, "REFRESH_INVALID", "刷新凭证无效");
+                    }
+                    String replacement = crypto.randomToken();
+                    row.setRefreshHash(crypto.digest(replacement));
+                    mapper.updateSession(row);
+                    return result(row, replacement);
+                }
+        );
+    }
 }
