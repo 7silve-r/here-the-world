@@ -274,6 +274,6 @@ public class AuthService {
                     mapper.updateSession(row);
                     return result(row, replacement);
                 }
-        )
+        );
     }
 }
