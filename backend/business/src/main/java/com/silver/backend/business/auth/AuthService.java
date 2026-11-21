@@ -157,6 +157,10 @@ public class AuthService {
                     && code.getExpiresAt() > Values.now()
                     && Objects.equals(code.getCodeHash(), payload.get("proof"));
         }
+        if ("RESET".equals(payload.get("purpose"))) {
+            ResetRow row = mapper.reset((String) payload.get("proof"));
+            return row != null && !row.isConsumed() && row.getExpiresAt() > Values.now();
+        }
         return false;
     }
 
