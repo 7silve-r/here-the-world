@@ -357,4 +357,21 @@ public class AuthService {
                 }
         );
     }
+
+    public Ack change(Viewer viewer, ChangePasswordInput input) {
+        return tx.write(
+                "10:user:" + viewer.requireUser(),
+                () -> {
+                    UserRow user = mapper.user(viewer.requireUser());
+                    if (!passwordEncoder.matches(input.currentPassword(), user.getPasswordHash())) {
+                        throw new ApiException(401, "INVALID_CREDENTIALS", "当前密码错误");
+                    }
+                    user.setPasswordHash(passwordEncoder.encode(input.newPassword()));
+                    mapper.updateUser(user);
+                    mapper.consumeResets(user.getId());
+                    mapper.revokeAll(user.getId());
+                    return new  Ack(true);
+                }
+        );
+    }
 }
