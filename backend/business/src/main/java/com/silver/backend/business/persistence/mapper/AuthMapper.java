@@ -79,5 +79,5 @@ public interface AuthMapper {
     ResetRow reset(@Param("hash") String hash);
 
     @Update("UPDATE sessions SET revoked=TRUE WHERE user_id=#{id}")
-    void revokeAll(String id);
+    void revokeAll(@Param("id") String id);
 }
