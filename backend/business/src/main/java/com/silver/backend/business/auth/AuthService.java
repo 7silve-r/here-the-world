@@ -276,4 +276,21 @@ public class AuthService {
                 }
         );
     }
+
+    public Ack logout(String token) {
+        SessionRow hint = token == null ? null : mapper.refresh(crypto.digest(token));
+        return tx.write(
+                hint == null ? List.of() : List.of("10:user:" + hint.getUserId()),
+                () -> {
+                    if (hint != null) {
+                        SessionRow row = mapper.session(hint.getId());
+                        if (row != null) {
+                            row.setRevoked(true);
+                            mapper.updateSession(row);
+                        }
+                    }
+                    return new Ack(true);
+                }
+        );
+    }
 }
