@@ -1,10 +1,7 @@
 package com.silver.backend.business.auth;
 
 import com.silver.backend.business.HttpReplies;
-import com.silver.backend.business.dto.EmailInput;
-import com.silver.backend.business.dto.LoginInput;
-import com.silver.backend.business.dto.RegisterInput;
-import com.silver.backend.business.dto.VerifyEmailInput;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.business.system.Requests;
 import com.silver.backend.common.Reply;
@@ -113,5 +110,14 @@ public class AuthController {
         setCookie(res, "htw_refresh", result.refresh(), result.remainingSeconds());
         setCookie(res, "htw_media", result.media(), result.remainingSeconds());
         return HttpReplies.ok(req, result.data());
+    }
+
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest req, HttpServletResponse res) {
+        Ack result = service.logout(getCookie(req, "htw_refresh"));
+        setCookie(res, "htw_refresh", "", 0);
+        setCookie(res, "htw_media", "", 0);
+        return HttpReplies.ok(req, result);
     }
 }
