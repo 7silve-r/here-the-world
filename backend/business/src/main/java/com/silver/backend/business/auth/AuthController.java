@@ -120,4 +120,21 @@ public class AuthController {
         setCookie(res, "htw_media", "", 0);
         return HttpReplies.ok(req, result);
     }
+
+    @PostMapping("/forget-password")
+    public ResponseEntity<?> forget(@RequestBody Map<String, Object> body, HttpServletRequest req) {
+        EmailInput input = requests.decode("EmailInput", body, EmailInput.class);
+        limit(req, input.email(), "forget", 1, 60);
+        return HttpReplies.reply(req, Reply.of(202, service.forget(input)));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> reset(
+            @RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
+        ResetPasswordInput input = requests.decode("ResetPasswordInput", body, ResetPasswordInput.class);
+        Ack result = service.reset(input);
+        setCookie(res, "htw_refresh", "", 0);
+        setCookie(res, "htw_media", "", 0);
+        return  HttpReplies.ok(req, result);
+    }
 }
