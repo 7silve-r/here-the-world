@@ -10,7 +10,6 @@ import com.silver.backend.business.persistence.mapper.WorkMapper;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
-import com.silver.backend.infrastructure.Crypto;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -21,8 +20,6 @@ public class Views {
     private AssetMapper assetMapper;
     @Autowired
     private WorkMapper workMapper;
-    @Autowired
-    private Crypto crypto;
     private final String baseUrl;
 
     public Views(@Value("${htw.public-api-base-url}") String baseUrl) {
