@@ -41,7 +41,7 @@ public interface AuthMapper {
     @Select("SELECT * FROM users WHERE id=#{id}")
     UserRow user(@Param("id") String id);
 
-    @Update("UPDATE verification_codes SET attemps=attemps+1 WHERE user_id=#{id}")
+    @Update("UPDATE verification_codes SET attempts=attempts+1 WHERE user_id=#{id}")
     void attempt(@Param("id") String id);
 
     @Update("""
