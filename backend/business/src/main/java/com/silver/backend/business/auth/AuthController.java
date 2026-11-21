@@ -113,6 +113,7 @@ public class AuthController {
     }
 
 
+    @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletRequest req, HttpServletResponse res) {
         Ack result = service.logout(getCookie(req, "htw_refresh"));
         setCookie(res, "htw_refresh", "", 0);
