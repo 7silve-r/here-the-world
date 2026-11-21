@@ -510,7 +510,7 @@ class PasswordResetTest extends BackendTestSupport {
 
     private Proof proof(String user) {
         Set<String> previous = new HashSet<>(taskIds());
-        assertTrue(auth.forget(new EmailInput(users.user(user).getEmail())).accepted());
+        assertTrue(auth.forgot(new EmailInput(users.user(user).getEmail())).accepted());
         List<String> added = taskIds().stream().filter(id -> !previous.contains(id)).toList();
         assertEquals(1, added.size());
         return decode(added.get(0));
