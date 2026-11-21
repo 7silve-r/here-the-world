@@ -194,7 +194,7 @@ public class AuthService {
     public MessageAccepted resend(EmailInput input) {
         String email = normalizeEmail(input.email());
         return tx.write(
-                "05:email" + email,
+                "05:email:" + email,
                 () -> {
                     UserRow user = lockedEmailUser(email);
                     if (user != null && !user.isEmailVerified()) {
