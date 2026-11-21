@@ -12,7 +12,9 @@ import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 
+@Component
 public class Views {
     @Autowired
     private AuthMapper authMapper;
