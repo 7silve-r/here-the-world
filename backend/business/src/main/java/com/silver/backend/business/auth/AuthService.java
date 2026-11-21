@@ -107,7 +107,7 @@ public class AuthService {
         String displayName = Requests.trimmed(in.displayName(), "displayName", true);
         String email = normalizeEmail(in.email());
         return tx.write(
-                List.of("05:email" + email, "05:username" + in.username().toLowerCase(Locale.ROOT)),
+                List.of("05:email:" + email, "05:username:" + in.username().toLowerCase(Locale.ROOT)),
                 () -> {
                     UserRow existing = mapper.email(email);
                     if (existing != null) {
@@ -149,17 +149,18 @@ public class AuthService {
     }
 
     private UserRow lockedEmailUser(String email) {
-        UserRow hint = mapper.email(email);
+        UserRow hint = mapper.email(normalizeEmail(email));
         if (hint == null) return null;
         tx.lock(List.of("10:user:" + hint.getId()));
         return mapper.user(hint.getId());
     }
 
     public Ack verify(VerifyEmailInput input) {
+        String email = normalizeEmail(input.email());
         ApiException error = tx.write(
-            "05:email:" + input.email(),
+            "05:email:" + email,
                 () -> {
-                    UserRow user = lockedEmailUser(input.email());
+                    UserRow user = lockedEmailUser(email);
                     if (user != null && user.isEmailVerified()) {
                         return null;
                     }
@@ -191,13 +192,14 @@ public class AuthService {
     }
 
     public MessageAccepted resend(EmailInput input) {
+        String email = normalizeEmail(input.email());
         return tx.write(
-                "05:email" + normalizeEmail(input.email()),
+                "05:email:" + email,
                 () -> {
-                    UserRow user = lockedEmailUser(input.email());
+                    UserRow user = lockedEmailUser(email);
                     if (user != null && !user.isEmailVerified()) {
                         CodeRow code = mapper.code(user.getId());
-                        if (code == null || code.getSentAt() - Values.now() >= 60_000) {
+                        if (code == null || Values.now() - code.getSentAt() >= 60_000) {
                             issueCode(user);
                         }
                     }
