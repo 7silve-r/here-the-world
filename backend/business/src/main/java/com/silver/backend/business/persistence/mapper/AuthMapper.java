@@ -58,4 +58,10 @@ public interface AuthMapper {
         VALUES(#{row.id},#{row.userId},#{row.refreshHash},#{row.expiresAt},#{row.createdAt},#{row.revoked})
     """)
     void insertSession(@Param("row") SessionRow row);
+
+    @Select("SELECT * FROM sessions WHERE refresh_hash=#{hash}")
+    SessionRow refresh(@Param("hash") String hash);
+
+    @Update("UPDATE sessions SET refresh_hash=#{row.refreshHash},revoked=#{row.revoked} WHERE id=#{row.id}")
+    void updateSession(@Param("row") SessionRow row);
 }
