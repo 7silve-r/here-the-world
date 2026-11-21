@@ -47,13 +47,13 @@ public class AuthController {
     }
 
     private void setCookie(HttpServletResponse response, String name, String value, long seconds) {
-        response.setHeader(
+        response.addHeader(
                 HttpHeaders.SET_COOKIE,
                 ResponseCookie.from(name, value)
                         .httpOnly(true)
                         .secure(secure)
                         .sameSite("Lax")
-                        .path("/api/v1/auth")
+                        .path("htw_media".equals(name) ? "/api/v1/media/private/" : "/api/v1/auth")
                         .maxAge(seconds)
                         .build()
                         .toString());
