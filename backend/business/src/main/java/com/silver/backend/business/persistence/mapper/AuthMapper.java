@@ -1,6 +1,7 @@
 package com.silver.backend.business.persistence.mapper;
 
 import com.silver.backend.business.persistence.CodeRow;
+import com.silver.backend.business.persistence.ResetRow;
 import com.silver.backend.business.persistence.SessionRow;
 import com.silver.backend.business.persistence.UserRow;
 import org.apache.ibatis.annotations.*;
@@ -64,4 +65,19 @@ public interface AuthMapper {
 
     @Update("UPDATE sessions SET refresh_hash=#{row.refreshHash},revoked=#{row.revoked} WHERE id=#{row.id}")
     void updateSession(@Param("row") SessionRow row);
+
+    @Update("UPDATE password_resets SET consumed=TRUE WHERE user_id=#{id}")
+    void consumeResets(@Param("id") String id);
+
+    @Insert("""
+        INSERT INTO password_resets(token_hash,user_id,expires_at,consumed)
+        VALUES(#{row.tokenHash},#{row.userId},#{row.expiresAt},#{row.consumed})
+    """)
+    void insertReset(@Param("row") ResetRow row);
+
+    @Select("SELECT * FROM password_resets WHERE token_hash=#{hash}")
+    ResetRow reset(@Param("hash") String hash);
+
+    @Update("UPDATE sessions SET revoked=TRUE WHERE user_id=#{id}")
+    void revokeAll(@Param("id") String id);
 }
