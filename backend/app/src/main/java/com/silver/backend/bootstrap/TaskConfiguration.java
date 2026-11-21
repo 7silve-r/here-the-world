@@ -3,9 +3,12 @@ package com.silver.backend.bootstrap;
 import com.silver.backend.business.auth.AuthService;
 import com.silver.backend.infrastructure.MailGateway;
 import com.silver.backend.infrastructure.TaskQueue;
+import com.silver.backend.infrastructure.TransactionHelper;
 import org.springframework.beans.factory.SmartInitializingSingleton;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.Scheduled;
 
 import java.util.Map;
 import java.util.function.Consumer;
@@ -44,5 +47,26 @@ public class TaskConfiguration {
             )
           );
         };
+    }
+
+    public static class ScheduledJobs {
+        private final TaskQueue queue;
+
+        ScheduledJobs(TaskQueue queue) {
+            this.queue = queue;
+        }
+
+        @Scheduled(fixedDelayString = "${htw.task-poll-ms:1000}")
+        public void tasks() {
+            queue.tick();
+        }
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "htw.jobs-enabled", havingValue = "true", matchIfMissing = true)
+    ScheduledJobs scheduledJobs(
+            TaskQueue queue
+    ) {
+        return new ScheduledJobs(queue);
     }
 }
