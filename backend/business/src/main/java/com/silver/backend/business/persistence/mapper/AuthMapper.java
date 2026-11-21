@@ -77,4 +77,7 @@ public interface AuthMapper {
 
     @Select("SELECT * FROM password_resets WHERE token_hash=#{hash}")
     ResetRow reset(@Param("hash") String hash);
+
+    @Update("UPDATE sessions SET revoked=TRUE WHERE user_id=#{id}")
+    void revokeAll(String id);
 }

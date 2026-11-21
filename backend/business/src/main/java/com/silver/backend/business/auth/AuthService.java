@@ -331,4 +331,26 @@ public class AuthService {
                 }
         );
     }
+
+    public Ack reset(ResetPasswordInput input) {
+        ResetRow hint = mapper.reset(crypto.digest(input.token()));
+        return tx.write(
+                hint == null ? List.of() : List.of("10:user:" + hint.getUserId()),
+                () -> {
+                    ResetRow row = mapper.reset(crypto.digest(input.token()));
+                    if (row == null || row.isConsumed()) {
+                        throw new ApiException(422, "RESET_TOKEN_INVALID", "重置凭证无效");
+                    }
+                    if (row.getExpiresAt() <= Values.now()) {
+                        throw new ApiException(410, "RESET_TOKEN_EXPIRED", "重置凭证已过期");
+                    }
+                    UserRow user = mapper.user(row.getUserId());
+                    user.setPasswordHash(passwordEncoder.encode(input.newPassword()));
+                    mapper.updateUser(user);
+                    mapper.consumeResets(user.getId());
+                    mapper.revokeAll(user.getId());
+                    return new Ack(true);
+                }
+        );
+    }
 }
