@@ -2,6 +2,7 @@ package com.silver.backend.business.auth;
 
 import com.silver.backend.business.HttpReplies;
 import com.silver.backend.business.dto.EmailInput;
+import com.silver.backend.business.dto.LoginInput;
 import com.silver.backend.business.dto.RegisterInput;
 import com.silver.backend.business.dto.VerifyEmailInput;
 import com.silver.backend.business.system.RequestControl;
@@ -92,5 +93,16 @@ public class AuthController {
         var input = requests.decode("EmailInput", body, EmailInput.class);
         limit(req, input.email(), "resend", 1, 60);
         return HttpReplies.reply(req, Reply.of(202, service.resend(input)));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(
+            @RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
+        LoginInput input = requests.decode("LoginInput", body, LoginInput.class);
+        limit(req, input.email(), "login", 10, 60);
+        AuthService.LoginResult result = service.login(input);
+        setCookie(res, "htw_refresh", result.refresh(), result.remainingSeconds());
+        setCookie(res, "htw_media", result.media(), result.remainingSeconds());
+        return HttpReplies.ok(req, result.data());
     }
 }
