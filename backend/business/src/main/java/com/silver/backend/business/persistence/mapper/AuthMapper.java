@@ -55,7 +55,7 @@ public interface AuthMapper {
 
     @Insert("""
         INSERT INTO sessions(id,user_id,refresh_hash,expires_at,created_at,revoked)
-        VALUES VALUES(#{row.id},#{row.userId},#{row.refreshHash},#{row.expiresAt},#{row.createdAt},#{row.revoked})
+        VALUES(#{row.id},#{row.userId},#{row.refreshHash},#{row.expiresAt},#{row.createdAt},#{row.revoked})
     """)
     void insertSession(@Param("row") SessionRow row);
 }
