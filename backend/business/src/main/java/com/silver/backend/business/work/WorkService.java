@@ -116,7 +116,7 @@ public class WorkService {
                 () -> {
                     validate(viewer, input, true);
                     WorkRow w = new WorkRow();
-                    w.setId(Values.id()0);
+                    w.setId(Values.id());
                     w.setOwnerId(viewer.requireUser());
                     w.setKind(input.kind());
                     w.setStatus("DRAFT");
