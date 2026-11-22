@@ -1,5 +1,6 @@
 package com.silver.backend.business;
 
+import com.silver.backend.business.dto.Asset;
 import com.silver.backend.business.dto.Me;
 import com.silver.backend.business.dto.PublicUser;
 import com.silver.backend.business.dto.Settings;
@@ -92,5 +93,22 @@ public class Views {
 
     public Settings settings(UserRow user) {
         return new Settings(user.getTheme(), user.getMotion(), user.isAutoPlayMedia());
+    }
+
+    public Asset asset(AssetRow a, Viewer viewer) {
+        return new Asset(
+                a.getId(),
+                a.getPurpose(),
+                a.getMediaType(),
+                a.getStatus(),
+                a.getMimeType(),
+                a.getSizeBytes(),
+                url(a, false, viewer),
+                url(a, true, viewer),
+                a.getWidth() == null ? null : a.getWidth().longValue(),
+                a.getHeight() == null ? null : a.getHeight().longValue(),
+                a.getDurationMs(),
+                a.getFailureCode(),
+                Values.time(a.getCreatedAt()));
     }
 }
