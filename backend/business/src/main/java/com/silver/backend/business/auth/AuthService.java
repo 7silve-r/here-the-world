@@ -360,9 +360,9 @@ public class AuthService {
 
     public Ack change(Viewer viewer, ChangePasswordInput input) {
         return tx.write(
-                "10:user:" + viewer.requireUser(),
+                "10:user:" + viewer.requiredUser(),
                 () -> {
-                    UserRow user = mapper.user(viewer.requireUser());
+                    UserRow user = mapper.user(viewer.requiredUser());
                     if (!passwordEncoder.matches(input.currentPassword(), user.getPasswordHash())) {
                         throw new ApiException(401, "INVALID_CREDENTIALS", "当前密码错误");
                     }

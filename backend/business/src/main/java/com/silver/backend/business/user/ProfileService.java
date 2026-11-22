@@ -33,20 +33,20 @@ public class ProfileService {
     }
 
     public Me me(Viewer viewer) {
-        return views.me(viewer.requireUser());
+        return views.me(viewer.requiredUser());
     }
 
     public Me patch(Viewer viewer, PatchInput<ProfilePatch> input) {
         ProfilePatch values = input.value();
         List<String> resources = new ArrayList<>();
-        resources.add("10:user:" + viewer.requireUser());
+        resources.add("10:user:" + viewer.requiredUser());
         if (values.avatarAssetId() != null) {
             resources.add("30:asset:" +  values.avatarAssetId());
         }
         return tx.write(
                 resources,
                 () -> {
-                    UserRow user = authMapper.user(viewer.requireUser());
+                    UserRow user = authMapper.user(viewer.requiredUser());
                     if (input.contains("displayName")) {
                         user.setDisplayName(
                                 Requests.trimmed(values.displayName(), "displayName", true));
@@ -77,15 +77,15 @@ public class ProfileService {
     }
 
     public Settings settings(Viewer viewer) {
-        return views.settings(authMapper.user(viewer.requireUser()));
+        return views.settings(authMapper.user(viewer.requiredUser()));
     }
 
     public Settings settingsPatch(Viewer viewer, PatchInput<SettingsPatch> input) {
         SettingsPatch values = input.value();
         return tx.write(
-                "10:user:" + viewer.requireUser(),
+                "10:user:" + viewer.requiredUser(),
                 () -> {
-                    UserRow user = authMapper.user(viewer.requireUser());
+                    UserRow user = authMapper.user(viewer.requiredUser());
                     if (input.contains("theme")) {
                         user.setTheme(values.theme());
                     }

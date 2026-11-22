@@ -67,7 +67,7 @@ public class WorkService {
 
     private void validate(Viewer viewer, WorkInput in, boolean publishing) {
         Requests.trimmed(in.title(), "title", true);
-        String user = viewer.requireUser();
+        String user = viewer.requiredUser();
         int n = in.mediaAssetIds().size();
         if (Set.of("TEXT", "MUSIC_LINK").contains(in.kind()) && n != 0) {
             throw ApiException.invalid("mediaAssetIds", "NOT_ALLOWED", "该类型不允许主媒体文件");
@@ -117,7 +117,7 @@ public class WorkService {
                     validate(viewer, input, true);
                     WorkRow w = new WorkRow();
                     w.setId(Values.id());
-                    w.setOwnerId(viewer.requireUser());
+                    w.setOwnerId(viewer.requiredUser());
                     w.setKind(input.kind());
                     w.setStatus("DRAFT");
                     w.setVersion(1);

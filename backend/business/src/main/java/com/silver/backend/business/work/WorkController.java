@@ -38,6 +38,6 @@ public class WorkController {
         Viewer v = RequestContext.viewer(req);
         return HttpReplies.reply(
                 req,
-                control.idempotency(v.requireUser(), "/works", key, body, () -> service.create(v, input)));
+                control.idempotency(v.requiredUser(), "/works", key, body, () -> service.create(v, input)));
     }
 }
