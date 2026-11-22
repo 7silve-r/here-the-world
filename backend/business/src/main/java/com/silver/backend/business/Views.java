@@ -127,7 +127,7 @@ public class Views {
                 new MusicLink.Playback("EXTERNAL", null));
     }
 
-    public WorkStats stats(String workId) {
-        return new WorkStats(socialMapper.likes(workId), socialMapper.bookmarks(workId), socialMapper.comments(workId));
+    public WorkStats stats(String work) {
+        return new WorkStats(socialMapper.likes(work), socialMapper.bookmarks(work), socialMapper.comments(work));
     }
 }

@@ -7,11 +7,11 @@ import org.apache.ibatis.annotations.Select;
 @Mapper
 public interface SocialMapper {
     @Select("SELECT COUNT(*) FROM work_likes WHERE work_id=#{work}")
-    long likes(@Param("work") String workId);
+    long likes(@Param("work") String work);
 
     @Select("SELECT COUNT(*) FROM bookmarks WHERE work_id=#{work}")
-    long bookmarks(@Param("work") String workId);
+    long bookmarks(@Param("work") String work);
 
     @Select("SELECT COUNT(*) FROM comments WHERE work_id=#{work}")
-    long comments(@Param("work") String workId);
+    long comments(@Param("work") String work);
 }
