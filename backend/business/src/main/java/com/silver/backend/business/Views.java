@@ -203,4 +203,12 @@ public class Views {
                 Values.time(w.getUpdatedAt()),
                 w.getFailureCode());
     }
+
+    public WorkRow visible(String id, Viewer viewer) {
+        WorkRow w = workMapper.get(id);
+        if (w == null || (!"PUBLISHED".equals(w.getStatus()) && !Objects.equals(w.getOwnerId(), viewer.userId()))) {
+            throw new ApiException(404, "WORK_NOT_FOUND", "作品不存在");
+        }
+        return w;
+    }
 }
