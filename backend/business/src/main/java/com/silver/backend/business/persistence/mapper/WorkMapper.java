@@ -1,10 +1,7 @@
 package com.silver.backend.business.persistence.mapper;
 
 import com.silver.backend.business.persistence.WorkRow;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 
@@ -29,4 +26,10 @@ public interface WorkMapper {
                #{row.createdAt},#{row.updatedAt},#{row.publishedAt})
     """)
     void insert(@Param("row") WorkRow row);
+
+    @Delete("DELETE FROM work_assets WHERE work_id=#{id}")
+    void clearAssets(@Param("id") String id);
+
+    @Insert("INSERT INTO work_assets(work_id,asset_id,position) VALUES(#{work},#{asset},#{position})")
+    void bind(@Param("work") String work, @Param("asset") String asset, @Param("position") int position);
 }
