@@ -6,6 +6,7 @@ import com.silver.backend.business.persistence.MusicRow;
 import com.silver.backend.business.persistence.UserRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
 import com.silver.backend.business.persistence.mapper.AuthMapper;
+import com.silver.backend.business.persistence.mapper.SocialMapper;
 import com.silver.backend.business.persistence.mapper.WorkMapper;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
@@ -24,6 +25,8 @@ public class Views {
     private AssetMapper assetMapper;
     @Autowired
     private WorkMapper workMapper;
+    @Autowired
+    private SocialMapper socialMapper;
     private final String baseUrl;
 
     public Views(@Value("${htw.public-api-base-url}") String baseUrl) {
@@ -122,5 +125,9 @@ public class Views {
                 m.getCoverUrl(),
                 m.getMetadataStatus(),
                 new MusicLink.Playback("EXTERNAL", null));
+    }
+
+    public WorkStats stats(String workId) {
+        return new WorkStats(socialMapper.likes(workId), socialMapper.bookmarks(workId), socialMapper.comments(workId));
     }
 }
