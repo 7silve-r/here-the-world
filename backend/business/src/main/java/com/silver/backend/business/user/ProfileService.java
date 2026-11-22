@@ -1,10 +1,7 @@
 package com.silver.backend.business.user;
 
 import com.silver.backend.business.Views;
-import com.silver.backend.business.dto.Me;
-import com.silver.backend.business.dto.ProfilePatch;
-import com.silver.backend.business.dto.PublicUser;
-import com.silver.backend.business.dto.Settings;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.UserRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
@@ -81,5 +78,25 @@ public class ProfileService {
 
     public Settings settings(Viewer viewer) {
         return views.settings(authMapper.user(viewer.requireUser()));
+    }
+
+    public Settings settingsPatch(Viewer viewer, PatchInput<SettingsPatch> input) {
+        SettingsPatch values = input.value();
+        return tx.write(
+                "10:user:" + viewer.requireUser(),
+                () -> {
+                    UserRow user = authMapper.user(viewer.requireUser());
+                    if (input.contains("theme")) {
+                        user.setTheme(values.theme());
+                    }
+                    if (input.contains("motion")) {
+                        user.setMotion(values.motion());
+                    }
+                    if (input.contains("autoPlayMedia")) {
+                        user.setAutoPlayMedia(values.autoPlayMedia());
+                    }
+                    authMapper.updateUser(user);
+                    return views.settings(user);
+                });
     }
 }
