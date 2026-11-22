@@ -114,7 +114,7 @@ public class WorkService {
         return tx.write(
                 assetLocks(input),
                 () -> {
-                    validate(viewer, input, true);
+                    validate(viewer, input, false);
                     WorkRow w = new WorkRow();
                     w.setId(Values.id());
                     w.setOwnerId(viewer.requiredUser());
