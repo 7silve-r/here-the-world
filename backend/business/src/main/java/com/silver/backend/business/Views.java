@@ -2,6 +2,7 @@ package com.silver.backend.business;
 
 import com.silver.backend.business.dto.Me;
 import com.silver.backend.business.dto.PublicUser;
+import com.silver.backend.business.dto.Settings;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.UserRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
@@ -87,5 +88,9 @@ public class Views {
                 p.createdAt(),
                 user.getEmail(),
                 user.isEmailVerified());
+    }
+
+    public Settings settings(UserRow user) {
+        return new Settings(user.getTheme(), user.getMotion(), user.isAutoPlayMedia());
     }
 }
