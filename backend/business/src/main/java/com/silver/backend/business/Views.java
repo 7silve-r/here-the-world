@@ -4,6 +4,7 @@ import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.MusicRow;
 import com.silver.backend.business.persistence.UserRow;
+import com.silver.backend.business.persistence.WorkRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
 import com.silver.backend.business.persistence.mapper.AuthMapper;
 import com.silver.backend.business.persistence.mapper.SocialMapper;
@@ -129,5 +130,12 @@ public class Views {
 
     public WorkStats stats(String work) {
         return new WorkStats(socialMapper.likes(work), socialMapper.bookmarks(work), socialMapper.comments(work));
+    }
+
+    public ViewerState viewer(WorkRow w, Viewer v) {
+        return new ViewerState(
+                v.authenticated() && socialMapper.liked(w.getId(), v.userId()) > 0,
+                v.authenticated() && socialMapper.bookmarked(w.getId(), v.userId()) > 0,
+                Objects.equals(w.getOwnerId(), v.userId()));
     }
 }
