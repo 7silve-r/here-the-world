@@ -173,4 +173,34 @@ public class Views {
         }
         return null;
     }
+
+    public WorkDetail detail(WorkRow w, Viewer v) {
+        List<Asset> list =
+                workMapper.assets(w.getId())
+                        .stream()
+                        .map(assetMapper::asset)
+                        .filter(Objects::nonNull)
+                        .map(a -> asset(a, v))
+                        .toList();
+        AssetRow cover = w.getCoverAssetId() == null ? null : assetMapper.asset(w.getCoverAssetId());
+        return new WorkDetail(
+                w.getId(),
+                w.getKind(),
+                w.getStatus(),
+                w.getVersion(),
+                w.getTitle(),
+                Values.excerpt(w.getBody(), 280),
+                user(w.getOwnerId()),
+                cover(w, v),
+                stats(w.getId()),
+                viewer(w, v),
+                Values.time(w.getCreatedAt()),
+                Values.time(w.getPublishedAt()),
+                w.getBody(),
+                list,
+                cover == null ? null : asset(cover, v),
+                w.getMusicLinkId() == null ? null : music(musicMapper.get(w.getMusicLinkId())),
+                Values.time(w.getUpdatedAt()),
+                w.getFailureCode());
+    }
 }
