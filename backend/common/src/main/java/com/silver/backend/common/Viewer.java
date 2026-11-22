@@ -9,7 +9,7 @@ public record Viewer(String userId, String sessionId) {
         return userId != null;
     }
 
-    public String requireUser() {
+    public String requiredUser() {
         if (!authenticated()) {
             throw new ApiException(401, "AUTH_REQUIRED", "请先登录");
         }
