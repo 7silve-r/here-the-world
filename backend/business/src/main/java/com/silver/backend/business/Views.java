@@ -1,13 +1,11 @@
 package com.silver.backend.business;
 
-import com.silver.backend.business.dto.Me;
-import com.silver.backend.business.dto.PublicUser;
-import com.silver.backend.business.dto.Settings;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.AssetRow;
+import com.silver.backend.business.persistence.MusicRow;
 import com.silver.backend.business.persistence.UserRow;
-import com.silver.backend.business.persistence.mapper.AssetMapper;
-import com.silver.backend.business.persistence.mapper.AuthMapper;
-import com.silver.backend.business.persistence.mapper.WorkMapper;
+import com.silver.backend.business.persistence.WorkRow;
+import com.silver.backend.business.persistence.mapper.*;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
@@ -15,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Objects;
 
 @Component
@@ -25,6 +24,10 @@ public class Views {
     private AssetMapper assetMapper;
     @Autowired
     private WorkMapper workMapper;
+    @Autowired
+    private SocialMapper socialMapper;
+    @Autowired
+    private MusicMapper musicMapper;
     private final String baseUrl;
 
     public Views(@Value("${htw.public-api-base-url}") String baseUrl) {
@@ -92,5 +95,120 @@ public class Views {
 
     public Settings settings(UserRow user) {
         return new Settings(user.getTheme(), user.getMotion(), user.isAutoPlayMedia());
+    }
+
+    public Asset asset(AssetRow a, Viewer viewer) {
+        return new Asset(
+                a.getId(),
+                a.getPurpose(),
+                a.getMediaType(),
+                a.getStatus(),
+                a.getMimeType(),
+                a.getSizeBytes(),
+                url(a, false, viewer),
+                url(a, true, viewer),
+                a.getWidth() == null ? null : a.getWidth().longValue(),
+                a.getHeight() == null ? null : a.getHeight().longValue(),
+                a.getDurationMs(),
+                a.getFailureCode(),
+                Values.time(a.getCreatedAt()));
+    }
+
+    public MusicLink music(MusicRow m) {
+        return m == null
+                ? null
+                : new MusicLink(
+                m.getId(),
+                m.getProvider(),
+                m.getSourceUrl(),
+                m.getTitle(),
+                m.getArtist(),
+                m.getCoverUrl(),
+                m.getMetadataStatus(),
+                new MusicLink.Playback("EXTERNAL", null));
+    }
+
+    public WorkStats stats(String work) {
+        return new WorkStats(socialMapper.likes(work), socialMapper.bookmarks(work), socialMapper.comments(work));
+    }
+
+    public ViewerState viewer(WorkRow w, Viewer v) {
+        return new ViewerState(
+                v.authenticated() && socialMapper.liked(w.getId(), v.userId()) > 0,
+                v.authenticated() && socialMapper.bookmarked(w.getId(), v.userId()) > 0,
+                Objects.equals(w.getOwnerId(), v.userId()));
+    }
+
+    private AssetRow coverAsset(WorkRow w) {
+        if (w.getCoverAssetId() != null) {
+            return assetMapper.asset(w.getCoverAssetId());
+        }
+        List<String> ids = workMapper.assets(w.getId());
+        if (("IMAGE".equals(w.getKind()) || "VIDEO".equals(w.getKind())) && !ids.isEmpty()) {
+            return assetMapper.asset(ids.get(0));
+        }
+        return null;
+    }
+
+    public Cover cover(WorkRow w, Viewer v) {
+        AssetRow a = coverAsset(w);
+        if (a != null) {
+            String link = url(a, true, v);
+            if (link == null && "IMAGE".equals(a.getMediaType())) {
+                link = url(a, false, v);
+            }
+            if (link != null) {
+                return new Cover(
+                        link,
+                        a.getWidth() == null ? null : a.getWidth().longValue(),
+                        a.getHeight() == null ? null : a.getHeight().longValue(),
+                        null);
+            }
+        }
+        if (w.getMusicLinkId() != null) {
+            MusicRow m = musicMapper.get(w.getMusicLinkId());
+            if (m != null && m.getCoverUrl() != null) {
+                return new Cover(m.getCoverUrl(), null, null, null);
+            }
+        }
+        return null;
+    }
+
+    public WorkDetail detail(WorkRow w, Viewer v) {
+        List<Asset> list =
+                workMapper.assets(w.getId())
+                        .stream()
+                        .map(assetMapper::asset)
+                        .filter(Objects::nonNull)
+                        .map(a -> asset(a, v))
+                        .toList();
+        AssetRow cover = w.getCoverAssetId() == null ? null : assetMapper.asset(w.getCoverAssetId());
+        return new WorkDetail(
+                w.getId(),
+                w.getKind(),
+                w.getStatus(),
+                w.getVersion(),
+                w.getTitle(),
+                Values.excerpt(w.getBody(), 280),
+                user(w.getOwnerId()),
+                cover(w, v),
+                stats(w.getId()),
+                viewer(w, v),
+                Values.time(w.getCreatedAt()),
+                Values.time(w.getPublishedAt()),
+                w.getBody(),
+                list,
+                cover == null ? null : asset(cover, v),
+                w.getMusicLinkId() == null ? null : music(musicMapper.get(w.getMusicLinkId())),
+                Values.time(w.getUpdatedAt()),
+                w.getFailureCode());
+    }
+
+    public WorkRow visible(String id, Viewer viewer) {
+        WorkRow w = workMapper.get(id);
+        if (w == null || (!"PUBLISHED".equals(w.getStatus()) && !Objects.equals(w.getOwnerId(), viewer.userId()))) {
+            throw new ApiException(404, "WORK_NOT_FOUND", "作品不存在");
+        }
+        return w;
     }
 }
