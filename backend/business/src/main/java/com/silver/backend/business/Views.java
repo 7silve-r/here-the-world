@@ -5,10 +5,7 @@ import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.MusicRow;
 import com.silver.backend.business.persistence.UserRow;
 import com.silver.backend.business.persistence.WorkRow;
-import com.silver.backend.business.persistence.mapper.AssetMapper;
-import com.silver.backend.business.persistence.mapper.AuthMapper;
-import com.silver.backend.business.persistence.mapper.SocialMapper;
-import com.silver.backend.business.persistence.mapper.WorkMapper;
+import com.silver.backend.business.persistence.mapper.*;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
@@ -16,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Objects;
 
 @Component
@@ -28,6 +26,8 @@ public class Views {
     private WorkMapper workMapper;
     @Autowired
     private SocialMapper socialMapper;
+    @Autowired
+    private MusicMapper musicMapper;
     private final String baseUrl;
 
     public Views(@Value("${htw.public-api-base-url}") String baseUrl) {
@@ -137,5 +137,40 @@ public class Views {
                 v.authenticated() && socialMapper.liked(w.getId(), v.userId()) > 0,
                 v.authenticated() && socialMapper.bookmarked(w.getId(), v.userId()) > 0,
                 Objects.equals(w.getOwnerId(), v.userId()));
+    }
+
+    private AssetRow coverAsset(WorkRow w) {
+        if (w.getCoverAssetId() != null) {
+            return assetMapper.asset(w.getCoverAssetId());
+        }
+        List<String> ids = workMapper.assets(w.getId());
+        if (("IMAGE".equals(w.getKind()) || "VIDEO".equals(w.getKind())) && !ids.isEmpty()) {
+            return assetMapper.asset(ids.get(0));
+        }
+        return null;
+    }
+
+    public Cover cover(WorkRow w, Viewer v) {
+        AssetRow a = coverAsset(w);
+        if (a != null) {
+            String link = url(a, true, v);
+            if (link == null && "IMAGE".equals(a.getMediaType())) {
+                link = url(a, false, v);
+            }
+            if (link != null) {
+                return new Cover(
+                        link,
+                        a.getWidth() == null ? null : a.getWidth().longValue(),
+                        a.getHeight() == null ? null : a.getHeight().longValue(),
+                        null);
+            }
+        }
+        if (w.getMusicLinkId() != null) {
+            MusicRow m = musicMapper.get(w.getMusicLinkId());
+            if (m != null && m.getCoverUrl() != null) {
+                return new Cover(m.getCoverUrl(), null, null, null);
+            }
+        }
+        return null;
     }
 }
