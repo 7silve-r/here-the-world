@@ -1,10 +1,8 @@
 package com.silver.backend.business;
 
-import com.silver.backend.business.dto.Asset;
-import com.silver.backend.business.dto.Me;
-import com.silver.backend.business.dto.PublicUser;
-import com.silver.backend.business.dto.Settings;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.AssetRow;
+import com.silver.backend.business.persistence.MusicRow;
 import com.silver.backend.business.persistence.UserRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
 import com.silver.backend.business.persistence.mapper.AuthMapper;
@@ -110,5 +108,19 @@ public class Views {
                 a.getDurationMs(),
                 a.getFailureCode(),
                 Values.time(a.getCreatedAt()));
+    }
+
+    public MusicLink music(MusicRow m) {
+        return m == null
+                ? null
+                : new MusicLink(
+                m.getId(),
+                m.getProvider(),
+                m.getSourceUrl(),
+                m.getTitle(),
+                m.getArtist(),
+                m.getCoverUrl(),
+                m.getMetadataStatus(),
+                new MusicLink.Playback("EXTERNAL", null));
     }
 }
