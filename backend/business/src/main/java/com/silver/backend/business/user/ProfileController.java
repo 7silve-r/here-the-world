@@ -37,4 +37,9 @@ public class ProfileController {
                         RequestContext.viewer(req),
                         requests.patch("ProfilePatch", body, ProfilePatch.class)));
     }
+
+    @GetMapping("/me/settings")
+    public ResponseEntity<?> settings(HttpServletRequest req) {
+        return HttpReplies.ok(req, service.settings(RequestContext.viewer(req)));
+    }
 }

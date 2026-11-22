@@ -4,6 +4,7 @@ import com.silver.backend.business.Views;
 import com.silver.backend.business.dto.Me;
 import com.silver.backend.business.dto.ProfilePatch;
 import com.silver.backend.business.dto.PublicUser;
+import com.silver.backend.business.dto.Settings;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.UserRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
@@ -76,5 +77,9 @@ public class ProfileService {
                     return views.me(user.getId());
                 }
         );
+    }
+
+    public Settings settings(Viewer viewer) {
+        return views.settings(authMapper.user(viewer.requireUser()));
     }
 }
