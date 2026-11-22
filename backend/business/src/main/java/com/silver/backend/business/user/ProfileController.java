@@ -3,6 +3,7 @@ package com.silver.backend.business.user;
 import com.silver.backend.business.HttpReplies;
 import com.silver.backend.business.RequestContext;
 import com.silver.backend.business.dto.ProfilePatch;
+import com.silver.backend.business.dto.SettingsPatch;
 import com.silver.backend.business.system.Requests;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,5 +37,19 @@ public class ProfileController {
                 service.patch(
                         RequestContext.viewer(req),
                         requests.patch("ProfilePatch", body, ProfilePatch.class)));
+    }
+
+    @GetMapping("/me/settings")
+    public ResponseEntity<?> settings(HttpServletRequest req) {
+        return HttpReplies.ok(req, service.settings(RequestContext.viewer(req)));
+    }
+
+    @PatchMapping("/me/settings")
+    public ResponseEntity<?> settingsPatch(@RequestBody Map<String,Object> body, HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.settingsPatch(
+                        RequestContext.viewer(req),
+                        requests.patch("SettingsPatch", body, SettingsPatch.class)));
     }
 }
