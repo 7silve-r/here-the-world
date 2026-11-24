@@ -54,4 +54,14 @@ public class WorkController {
                         ifMatch,
                         requests.decode("WorkInput", body, WorkInput.class)));
     }
+
+    @PostMapping("/works/{workId}/publish")
+    public ResponseEntity<?> publish(
+            @PathVariable("workId") String workId,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch,
+            HttpServletRequest req) {
+        return  HttpReplies.reply(
+                req,
+                service.publish(RequestContext.viewer(req), workId, ifMatch));
+    }
 }
