@@ -1,6 +1,7 @@
 package com.silver.backend.business.work;
 
 import com.silver.backend.business.Views;
+import com.silver.backend.business.dto.Ack;
 import com.silver.backend.business.dto.WorkInput;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.WorkRow;
@@ -270,6 +271,26 @@ public class WorkService {
                        w.setFailureCode(null);
                    }
                    change(w);
+                }
+        );
+    }
+
+    public Reply delete(Viewer viewer, String id, String ifMatch) {
+        return tx.write(
+                "20:work:" + id,
+                () -> {
+                    long version = parseVersion(ifMatch);
+                    WorkRow w = workMapper.get(id);
+                    if (w.getVersion() != version) {
+                        throw new ApiException(412, "VERSION_CONFLICT", "作品已发生变化，请重新读取");
+                    }
+                    workMapper.deleteLikes(w.getId());
+                    workMapper.deleteBookmarks(w.getId());
+                    workMapper.deleteComments(w.getId());
+                    if (workMapper.delete(id, version) != 1) {
+                        throw new ApiException(412, "VERSION_CONFLICT", "作品版本冲突");
+                    }
+                    return Reply.ok(new Ack(true));
                 }
         );
     }
