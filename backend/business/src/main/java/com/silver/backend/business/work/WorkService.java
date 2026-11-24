@@ -280,7 +280,7 @@ public class WorkService {
                 "20:work:" + id,
                 () -> {
                     long version = parseVersion(ifMatch);
-                    WorkRow w = workMapper.get(id);
+                    WorkRow w = views.owned(id, viewer);
                     if (w.getVersion() != version) {
                         throw new ApiException(412, "VERSION_CONFLICT", "作品已发生变化，请重新读取");
                     }
