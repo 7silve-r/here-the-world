@@ -32,4 +32,14 @@ public interface WorkMapper {
 
     @Insert("INSERT INTO work_assets(work_id,asset_id,position) VALUES(#{work},#{asset},#{position})")
     void bind(@Param("work") String work, @Param("asset") String asset, @Param("position") int position);
+
+    @Update("""
+        UPDATE works
+        SET status=#{row.status},version=#{row.version},title=#{row.title},
+            body=#{row.body},cover_asset_id=#{row.coverAssetId},music_link_id=#{row.musicLinkId},
+            failure_code=#{row.failureCode},publish_task_id=#{row.publishTaskId},
+            updated_at=#{row.updatedAt},published_at=#{row.publishedAt}
+        WHERE id=#{row.id} AND version=#{expected}
+    """)
+    int update(@Param("row") WorkRow row, @Param("expected") long expected);
 }

@@ -211,4 +211,13 @@ public class Views {
         }
         return w;
     }
+
+    public WorkRow owned(String id, Viewer viewer) {
+        WorkRow w = workMapper.get(id);
+        String user = viewer.requiredUser();
+        if (w == null || !w.getOwnerId().equals(user)) {
+            throw new ApiException(404, "WORK_NOT_FOUND", "作品不存在");
+        }
+        return w;
+    }
 }

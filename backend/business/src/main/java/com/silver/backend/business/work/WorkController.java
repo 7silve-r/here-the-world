@@ -40,4 +40,18 @@ public class WorkController {
                 req,
                 control.idempotency(v.requiredUser(), "/works", key, body, () -> service.create(v, input)));
     }
+
+    @PutMapping("/works/{workId}")
+    public ResponseEntity<?> save(
+            @PathVariable("workId") String workId,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest req) {
+        return  HttpReplies.reply(
+                req,
+                service.save(RequestContext.viewer(req),
+                        workId,
+                        ifMatch,
+                        requests.decode("WorkInput", body, WorkInput.class)));
+    }
 }
