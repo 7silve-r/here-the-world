@@ -287,6 +287,7 @@ public class WorkService {
                     workMapper.deleteLikes(w.getId());
                     workMapper.deleteBookmarks(w.getId());
                     workMapper.deleteComments(w.getId());
+                    workMapper.clearAssets(w.getId());
                     if (workMapper.delete(id, version) != 1) {
                         throw new ApiException(412, "VERSION_CONFLICT", "作品版本冲突");
                     }
