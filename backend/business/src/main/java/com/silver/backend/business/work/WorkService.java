@@ -132,4 +132,62 @@ public class WorkService {
                     return Reply.work(201, views.detail(w, viewer), w.getVersion());
                 });
     }
+
+    private long parseVersion(String ifMatch) {
+        if (ifMatch == null) {
+            throw new ApiException(428, "PRECONDITION_REQUIRED", "需要 If-Match");
+        }
+        if (!ifMatch.matches("\"v[1-9][0-9]*\"")) {
+            throw new ApiException(400, "BAD_REQUEST", "If-Match 格式错误");
+        }
+        try {
+            return Long.parseLong(ifMatch.substring(2,  ifMatch.length() - 1));
+        } catch (NumberFormatException e) {
+            throw new ApiException(400, "BAD_REQUEST", "If-Match 超出范围");
+        }
+    }
+
+    private void match(WorkRow w, String ifMatch) {
+        if (parseVersion(ifMatch) != w.getVersion()) {
+            throw new ApiException(412, "VERSION_CONFLICT", "作品已发生变化，请重新读取");
+        }
+    }
+
+    private void change(WorkRow w) {
+        long old = w.getVersion();
+        w.setVersion(old + 1);
+        w.setUpdatedAt(Values.now());
+        if (workMapper.update(w, old) != 1) {
+            throw new ApiException(412, "VERSION_CONFLICT", "作品版本冲突");
+        }
+    }
+
+    public Reply save(Viewer viewer, String id, String ifMatch, WorkInput input) {
+        var resources = assetLocks(input);
+        resources.add("20:work:" + id);
+        return tx.write(
+                resources,
+                () -> {
+                    WorkRow w = views.owned(id, viewer);
+                    match(w, ifMatch);
+                    if (!w.getKind().equals(input.kind())) {
+                        throw new ApiException(409, "WORK_KIND_IMMUTABLE", "作品类型创建后不可改变");
+                    }
+                    if (!Set.of("DRAFT", "FAILED").contains(w.getStatus())) {
+                        throw new ApiException(409, "WORK_NOT_EDITABLE", "作品当前不可编辑");
+                    }
+                    validate(viewer, input, false);
+                    w.setTitle(Requests.trimmed(input.title(), "title", true));
+                    w.setBody(input.body().strip());
+                    w.setCoverAssetId(input.coverAssetId());
+                    w.setMusicLinkId(input.musicLinkId());
+                    w.setStatus("DRAFT");
+                    w.setFailureCode(null);
+                    w.setPublishTaskId(null);
+                    change(w);
+                    bind(w.getId(), input.mediaAssetIds());
+                    return  Reply.work(200, views.detail(w, viewer), w.getVersion());
+                }
+        );
+    }
 }
