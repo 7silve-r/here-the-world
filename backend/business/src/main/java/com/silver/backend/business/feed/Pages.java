@@ -51,7 +51,7 @@ public class Pages {
     }
 
     // 专门为 /feed 作品流生成下一页游标(cursor)
-    public String feed(String session, String position) {
+    public String feed(String session, long position) {
         return crypto.ticket(
                 "cursor",
                 Values.map("route", "/feed", "filter", "", "session", session, "position", position),
