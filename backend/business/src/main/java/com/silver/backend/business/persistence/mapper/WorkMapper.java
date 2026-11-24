@@ -42,4 +42,16 @@ public interface WorkMapper {
         WHERE id=#{row.id} AND version=#{expected}
     """)
     int update(@Param("row") WorkRow row, @Param("expected") long expected);
+
+    @Delete("DELETE FROM work_likes WHERE work_id=#{id}")
+    void deleteLikes(@Param("id") String id);
+
+    @Delete("DELETE FROM bookmarks WHERE work_id=#{id}")
+    void deleteBookmarks(@Param("id") String id);
+
+    @Delete("DELETE FROM comments WHERE work_id=#{id}")
+    void deleteComments(@Param("id") String id);
+
+    @Delete("DELETE FROM works WHERE id=#{id} AND version=#{expected}")
+    int delete(@Param("id") String id, @Param("expected") long expected);
 }

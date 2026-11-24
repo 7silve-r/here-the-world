@@ -64,4 +64,14 @@ public class WorkController {
                 req,
                 service.publish(RequestContext.viewer(req), workId, ifMatch));
     }
+
+    @DeleteMapping("/works/{workId}")
+    public ResponseEntity<?> delete(
+            @PathVariable("workId") String workId,
+            @RequestHeader(value = "If-Match", required = false) String ifMatch,
+            HttpServletRequest req) {
+        return  HttpReplies.reply(
+                req,
+                service.delete(RequestContext.viewer(req), workId, ifMatch));
+    }
 }
