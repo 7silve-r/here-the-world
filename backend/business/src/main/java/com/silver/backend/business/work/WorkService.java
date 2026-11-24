@@ -12,6 +12,7 @@ import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Reply;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
+import com.silver.backend.infrastructure.TaskQueue;
 import com.silver.backend.infrastructure.TransactionHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,6 +33,8 @@ public class WorkService {
     private MusicMapper musicMapper;
     @Autowired
     private WorkMapper workMapper;
+    @Autowired
+    TaskQueue taskQueue;
 
     public Reply get(Viewer viewer, String id) {
         WorkRow w = views.visible(id, viewer);
@@ -187,6 +190,57 @@ public class WorkService {
                     change(w);
                     bind(w.getId(), input.mediaAssetIds());
                     return  Reply.work(200, views.detail(w, viewer), w.getVersion());
+                }
+        );
+    }
+
+    private List<AssetRow> references(WorkInput input) {
+        var list = new ArrayList<AssetRow>();
+        for (String id : input.mediaAssetIds()) {
+            list.add(assetMapper.asset(id));
+        }
+        if (input.coverAssetId() != null) {
+            list.add(assetMapper.asset(input.coverAssetId()));
+        }
+        return list;
+    }
+
+    public Reply publish(Viewer viewer, String id, String ifMatch) {
+        return tx.write(
+                "20:work:" + id,
+                () -> {
+                    WorkRow w = views.owned(id, viewer);
+                    match(w, ifMatch);
+                    if (Set.of("PROCESSING", "PUBLISHED").contains(w.getStatus())) {
+                        return Reply.work(
+                                "PROCESSING".equals(w.getStatus()) ? 202 : 200, views.detail(w, viewer), w.getVersion());
+                    }
+                    if (!"DRAFT".equals(w.getStatus())) {
+                        throw new ApiException(409, "WORK_NOT_EDITABLE", "请先保存修正后的草稿");
+                    }
+                    WorkInput input = new WorkInput(
+                            w.getKind(),
+                            w.getTitle(),
+                            w.getBody(),
+                            workMapper.assets(id),
+                            w.getCoverAssetId(),
+                            w.getMusicLinkId());
+                    tx.lock(assetLocks(input));
+                    validate(viewer, input, true);
+                    List<AssetRow> refs = references(input);
+                    boolean pending = refs.stream().anyMatch(a -> !"READY".equals(a.getStatus()));
+                    if (pending) {
+                        w.setStatus("PROCESSING");
+                        w.setPublishTaskId(Values.id());
+                        taskQueue.enqueue("PUBLISH",
+                                Values.map("work", w.getId(), "job", w.getPublishTaskId()));
+                    }
+                    else {
+                        w.setStatus("PUBLISHED");
+                        w.setPublishedAt(Values.now());
+                    }
+                    change(w);
+                    return Reply.work(pending ? 202 : 200, views.detail(w, viewer), w.getVersion());
                 }
         );
     }
