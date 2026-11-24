@@ -474,7 +474,7 @@ class WorkDraftTest extends BackendTestSupport {
         var inserted = new AtomicReference<String>();
         // 真实业务完成插入后注入故障，验证创建与幂等事务没有留下半条数据。
         doAnswer(invocation -> {
-            Reply<?> result = (Reply<?>) invocation.callRealMethod();
+            Reply result = (Reply) invocation.callRealMethod();
             inserted.set(((WorkDetail) result.data()).id());
             assertEquals(1, workCount(owner));
             throw new IllegalStateException("Failure after real draft insertion");
