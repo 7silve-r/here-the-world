@@ -17,9 +17,7 @@ import com.silver.backend.infrastructure.TransactionHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 public class WorkService {
@@ -241,6 +239,37 @@ public class WorkService {
                     }
                     change(w);
                     return Reply.work(pending ? 202 : 200, views.detail(w, viewer), w.getVersion());
+                }
+        );
+    }
+
+    public void finishPublish(Map<String, Object> payload) {
+        tx.run(
+                "20:work:" + payload.get("work"),
+                () -> {
+                    if (!taskQueue.ownsExecution()) return;
+                    WorkRow w = workMapper.get((String) payload.get("work"));
+                    if (w == null
+                            || !"PROCESSING".equals(w.getStatus())
+                            || !Objects.equals(w.getPublishTaskId(), payload.get("job"))) return;
+                   WorkInput input = new WorkInput(
+                           w.getKind(), w.getTitle(), w.getBody(),
+                           workMapper.assets(w.getId()), w.getCoverAssetId(), w.getMusicLinkId());
+                   tx.lock(assetLocks(input));
+                   List<AssetRow> refs = references(input);
+                   if (refs.stream().anyMatch(a -> a == null || "FAILED".equals(a.getStatus()))) {
+                       w.setStatus("FAILED");
+                       w.setFailureCode("MEDIA_PROCESSING_FAILED");
+                   }
+                   else if (refs.stream().anyMatch(a -> !"READY".equals(a.getStatus()))) {
+                        throw new TaskQueue.Pending();
+                   }
+                   else {
+                       w.setStatus("PUBLISHED");
+                       w.setPublishedAt(Values.now());
+                       w.setFailureCode(null);
+                   }
+                   change(w);
                 }
         );
     }
