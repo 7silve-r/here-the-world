@@ -220,4 +220,20 @@ public class Views {
         }
         return w;
     }
+
+    public WorkCard card(WorkRow w, Viewer v) {
+        return new WorkCard(
+                w.getId(),
+                w.getKind(),
+                w.getStatus(),
+                w.getVersion(),
+                w.getTitle(),
+                Values.excerpt(w.getBody(), 280),
+                user(w.getOwnerId()),
+                cover(w, v),
+                stats(w.getId()),
+                viewer(w, v),
+                Values.time(w.getCreatedAt()),
+                Values.time(w.getPublishedAt()));
+    }
 }
