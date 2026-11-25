@@ -24,4 +24,14 @@ public interface SocialMapper {
 
     @Delete("DELETE FROM work_likes WHERE work_id=#{work} AND user_id=#{user}")
     void unlike(@Param("work") String work, @Param("user") String user);
+
+    @Insert("INSERT INTO bookmarks(id,user_id,work_id,created_at) VALUES(#{id},#{user},#{work},#{at})")
+    void bookmark(
+            @Param("id") String id,
+            @Param("work") String work,
+            @Param("user") String user,
+            @Param("at") long at);
+
+    @Delete("DELETE FROM bookmarks WHERE work_id=#{work} AND user_id=#{user}")
+    void unbookmark(@Param("work") String work, @Param("user") String user);
 }

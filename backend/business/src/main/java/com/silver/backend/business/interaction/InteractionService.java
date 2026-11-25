@@ -43,4 +43,27 @@ public class InteractionService {
                 }
         );
     }
+
+    public InteractionState bookmark(Viewer v, String work, boolean enabled) {
+        return tx.write(
+                "20:work:" + work,
+                () -> {
+                    String user = v.requiredUser();
+                    views.interactable(work, v);
+                    boolean exist = socialMapper.bookmarked(work, user) > 0;
+                    if (enabled && !exist) {
+                        socialMapper.bookmark(Values.id(), work, user, Values.now());
+                    }
+                    if (!enabled && exist) {
+                        socialMapper.unbookmark(work, user);
+                    }
+                    return new InteractionState(
+                            work,
+                            socialMapper.liked(work, user) > 0,
+                            socialMapper.bookmarked(work, user) > 0,
+                            socialMapper.likes(work),
+                            socialMapper.bookmarks(work));
+                }
+        );
+    }
 }
