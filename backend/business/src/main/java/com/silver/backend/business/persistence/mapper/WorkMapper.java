@@ -54,4 +54,33 @@ public interface WorkMapper {
 
     @Delete("DELETE FROM works WHERE id=#{id} AND version=#{expected}")
     int delete(@Param("id") String id, @Param("expected") long expected);
+
+    @Select("""
+        SELECT * FROM works 
+                 WHERE owner_id=#{owner} 
+                   AND (#{status} IS NULL OR status=#{status}) 
+                   AND (created_at<#{at} OR (created_at=#{at} AND id<#{after})) 
+                 ORDER BY created_at DESC,id DESC 
+                                             LIMIT #{limit}
+    """)
+    List<WorkRow> mine(
+            @Param("owner") String owner,
+            @Param("status") String status,
+            @Param("at") long at,
+            @Param("after") String after,
+            @Param("limit") int limit);
+
+    @Select("""
+        SELECT * FROM works 
+                 WHERE owner_id=#{owner} 
+                   AND status='PUBLISHED' 
+                   AND (published_at<#{at} OR (published_at=#{at} AND id<#{after})) 
+                 ORDER BY published_at DESC,id DESC 
+                                               LIMIT #{limit}
+    """)
+    List<WorkRow> published(
+            @Param("owner") String owner,
+            @Param("at") long at,
+            @Param("after") String after,
+            @Param("limit") int limit);
 }

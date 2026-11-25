@@ -221,7 +221,7 @@ public class Views {
         return w;
     }
 
-    public WorkCard workCard(WorkRow w, Viewer v) {
+    public WorkCard card(WorkRow w, Viewer v) {
         return new WorkCard(
                 w.getId(),
                 w.getKind(),
