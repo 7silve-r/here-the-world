@@ -40,4 +40,14 @@ public class InteractionController {
                 req,
                 service.bookmark(RequestContext.viewer(req), workId, false));
     }
+
+    @GetMapping("/me/bookmarks")
+    public ResponseEntity<?> bookmarks(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit,
+            HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.bookmarks(RequestContext.viewer(req), cursor, limit));
+    }
 }
