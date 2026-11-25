@@ -83,4 +83,11 @@ public interface WorkMapper {
             @Param("at") long at,
             @Param("after") String after,
             @Param("limit") int limit);
+
+    @Select("""
+        SELECT id FROM works 
+                  WHERE status='PUBLISHED' AND published_at<=#{cutoff} 
+                  ORDER BY id
+    """)
+    List<String> candidates(@Param("cutoff") long cutoff);
 }
