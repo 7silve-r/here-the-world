@@ -26,4 +26,18 @@ public class InteractionController {
                 req,
                 service.like(RequestContext.viewer(req), workId, false));
     }
+
+    @PutMapping("/works/{workId}/bookmark")
+    public ResponseEntity<?> bookmark(@PathVariable("workId") String workId, HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.bookmark(RequestContext.viewer(req), workId, true));
+    }
+
+    @DeleteMapping("/works/{workId}/bookmark")
+    public ResponseEntity<?> unbookmark(@PathVariable("workId") String workId, HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.bookmark(RequestContext.viewer(req), workId, false));
+    }
 }
