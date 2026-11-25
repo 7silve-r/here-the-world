@@ -236,4 +236,12 @@ public class Views {
                 Values.time(w.getCreatedAt()),
                 Values.time(w.getPublishedAt()));
     }
+
+    public WorkRow interactable(String id, Viewer viewer) {
+        WorkRow w = visible(id, viewer);
+        if (!"PUBLISHED".equals(w.getStatus())) {
+            throw new ApiException(409, "WORK_NOT_PUBLISHED", "作品尚未发布");
+        }
+        return w;
+    }
 }

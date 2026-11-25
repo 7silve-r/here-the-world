@@ -1,8 +1,6 @@
 package com.silver.backend.business.persistence.mapper;
 
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
 
 @Mapper
 public interface SocialMapper {
@@ -20,4 +18,10 @@ public interface SocialMapper {
 
     @Select("SELECT COUNT(*) FROM bookmarks WHERE work_id=#{work} AND user_id=#{user}")
     long bookmarked(@Param("work") String work, @Param("user") String user);
+
+    @Insert("INSERT INTO work_likes(user_id,work_id,created_at) VALUES(#{user},#{work},#{at})")
+    void like(@Param("work") String work, @Param("user") String user, @Param("at") long at);
+
+    @Delete("DELETE FROM work_likes WHERE work_id=#{work} AND user_id=#{user}")
+    void unlike(@Param("work") String work, @Param("user") String user);
 }
