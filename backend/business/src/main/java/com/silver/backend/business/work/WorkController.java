@@ -3,6 +3,7 @@ package com.silver.backend.business.work;
 import com.silver.backend.business.HttpReplies;
 import com.silver.backend.business.RequestContext;
 import com.silver.backend.business.dto.WorkInput;
+import com.silver.backend.business.feed.QueryService;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.business.system.Requests;
 import com.silver.backend.common.Viewer;
@@ -22,6 +23,8 @@ public class WorkController {
     Requests requests;
     @Autowired
     RequestControl control;
+    @Autowired
+    private QueryService queryService;
 
     @GetMapping("/works/{workId}")
     public ResponseEntity<?> get(@PathVariable("workId") String id, HttpServletRequest req) {
@@ -73,5 +76,28 @@ public class WorkController {
         return  HttpReplies.reply(
                 req,
                 service.delete(RequestContext.viewer(req), workId, ifMatch));
+    }
+
+    @GetMapping("/users/{userId}/works")
+    public ResponseEntity<?> userWorks(
+            @PathVariable String userId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit,
+            HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                queryService.list(RequestContext.viewer(req), userId, false, null, cursor, limit));
+    }
+
+    @GetMapping("/me/works")
+    public ResponseEntity<?> myWorks(
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) String status,
+            HttpServletRequest req) {
+        Viewer v = RequestContext.viewer(req);
+        return HttpReplies.ok(
+                req,
+                queryService.list(v, v.requiredUser(), true, status, cursor, limit));
     }
 }
