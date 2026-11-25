@@ -1,7 +1,10 @@
 package com.silver.backend.business.feed;
 
 import com.silver.backend.business.Views;
+import com.silver.backend.business.dto.FeedPage;
+import com.silver.backend.business.dto.WorkCard;
 import com.silver.backend.business.dto.WorkPage;
+import com.silver.backend.business.persistence.FeedItemRow;
 import com.silver.backend.business.persistence.FeedRow;
 import com.silver.backend.business.persistence.WorkRow;
 import com.silver.backend.business.persistence.mapper.FeedMapper;
@@ -74,5 +77,53 @@ public class QueryService {
                     return row;
                 }
         );
+    }
+
+    public FeedPage feed(Viewer v, String cursor, Integer requested) {
+        int limit = pages.limit(requested);
+        FeedRow session;
+        long position = -1;
+        if (cursor == null) {
+            session = createSession();
+        }
+        else {
+            var claim = pages.open(cursor, "/feed",  "");
+            session = feedMapper.get((String) claim.get("session"));
+            position = ((Number) claim.get("position")).longValue();
+            if (session == null || session.getExpiresAt() <= Values.now()) {
+                throw new ApiException(410, "FEED_SESSION_EXPIRED", "作品流会话已过期，请刷新");
+            }
+        }
+        var cards = new ArrayList<WorkCard>();
+        long lastReturned = position;
+        long scan = position;
+        boolean more = false;
+        boolean exhausted = false;
+        while (!exhausted && cards.size() <= limit) {
+            List<FeedItemRow> batch = feedMapper.page(session.getId(), scan, Math.max(32, limit + 1));
+            if (batch.isEmpty()) {
+                break;
+            }
+            for (FeedItemRow row : batch) {
+                scan = row.getPosition();
+                WorkRow w = workMapper.get(row.getWorkId());
+                if (w == null || !"PUBLISHED".equals(w.getStatus())) {
+                    continue;
+                }
+                if (cards.size() == limit) {
+                    more = true;
+                    break;
+                }
+                cards.add(views.card(w, v));
+                lastReturned = row.getPosition();
+            }
+            if (more) break;
+            exhausted = batch.size() < Math.max(32, limit + 1);
+        }
+        return new FeedPage(
+                cards,
+                more ? pages.feed(session.getId(), lastReturned) : null,
+                more,
+                new FeedPage.FeedSession(session.getId(), Values.time(session.getExpiresAt())));
     }
 }

@@ -1,9 +1,13 @@
 package com.silver.backend.business.persistence.mapper;
 
+import com.silver.backend.business.persistence.FeedItemRow;
 import com.silver.backend.business.persistence.FeedRow;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 @Mapper
 public interface FeedMapper {
@@ -15,4 +19,19 @@ public interface FeedMapper {
             @Param("session") String session,
             @Param("position") long position,
             @Param("work") String work);
+
+    @Select("SELECT * FROM feed_sessions WHERE id=#{id}")
+    FeedRow get(@Param("id") String id);
+
+    @Select("""
+        SELECT work_id,position 
+        FROM feed_items 
+        WHERE session_id=#{session} AND position>#{position}
+        ORDER BY position 
+        LIMIT #{limit}
+    """)
+    List<FeedItemRow> page(
+            @Param("session") String session,
+            @Param("position") long position,
+            @Param("limit") int limit);
 }
