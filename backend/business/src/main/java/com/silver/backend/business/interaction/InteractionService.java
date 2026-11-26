@@ -5,9 +5,11 @@ import com.silver.backend.business.dto.*;
 import com.silver.backend.business.feed.Pages;
 import com.silver.backend.business.persistence.BookmarkRow;
 import com.silver.backend.business.persistence.CommentRow;
+import com.silver.backend.business.persistence.WorkRow;
 import com.silver.backend.business.persistence.mapper.SocialMapper;
 import com.silver.backend.business.persistence.mapper.WorkMapper;
 import com.silver.backend.business.system.Requests;
+import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
 import com.silver.backend.infrastructure.TransactionHelper;
@@ -134,6 +136,28 @@ public class InteractionService {
                     c.setCreatedAt(Values.now());
                     socialMapper.insertComment(c);
                     return views.comment(c, v);
+                });
+    }
+
+    public Ack deleteComment(Viewer v, String id) {
+        CommentRow hint = socialMapper.comment(id);
+        if (hint == null) {
+            throw new ApiException(404, "COMMENT_NOT_FOUND", "评论不存在");
+        }
+        return tx.write(
+                "20:work:" + hint.getWorkId(),
+                () -> {
+                    String user = v.requiredUser();
+                    CommentRow c = socialMapper.comment(id);
+                    if (c == null) {
+                        throw new ApiException(404, "COMMENT_NOT_FOUND", "评论不存在");
+                    }
+                    WorkRow w = views.interactable(c.getWorkId(), v);
+                    if (!user.equals(c.getUserId()) && !user.equals(w.getOwnerId())) {
+                        throw new ApiException(403, "FORBIDDEN", "无权删除评论");
+                    }
+                    socialMapper.deleteComment(id);
+                    return new Ack(true);
                 });
     }
 }

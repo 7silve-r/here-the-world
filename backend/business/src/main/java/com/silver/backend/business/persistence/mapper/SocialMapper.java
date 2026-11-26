@@ -80,4 +80,7 @@ public interface SocialMapper {
         VALUES(#{row.id},#{row.workId},#{row.userId},#{row.body},#{row.createdAt})
     """)
     void insertComment(@Param("row") CommentRow row);
+
+    @Delete("DELETE FROM comments WHERE id=#{id}")
+    void deleteComment(@Param("id") String id);
 }
