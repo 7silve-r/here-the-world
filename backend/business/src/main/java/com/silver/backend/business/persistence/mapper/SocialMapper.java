@@ -1,6 +1,7 @@
 package com.silver.backend.business.persistence.mapper;
 
 import com.silver.backend.business.persistence.BookmarkRow;
+import com.silver.backend.business.persistence.CommentRow;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -57,4 +58,29 @@ public interface SocialMapper {
             @Param("at") long at,
             @Param("after") String after,
             @Param("limit") int limit);
+
+    @Select("SELECT * FROM comments WHERE id=#{id}")
+    CommentRow comment(@Param("id") String id);
+
+    @Select("""
+        SELECT * FROM comments 
+                 WHERE work_id=#{work} 
+                   AND (created_at>#{at} OR(created_at=#{at} AND id>#{after}))
+                 ORDER BY created_at,id 
+                 LIMIT #{limit}
+    """)
+    List<CommentRow> commentPage(
+            @Param("work") String work,
+            @Param("at") long at,
+            @Param("after") String after,
+            @Param("limit") int limit);
+
+    @Insert("""
+        INSERT INTO comments(id,work_id,user_id,body,created_at)
+        VALUES(#{row.id},#{row.workId},#{row.userId},#{row.body},#{row.createdAt})
+    """)
+    void insertComment(@Param("row") CommentRow row);
+
+    @Delete("DELETE FROM comments WHERE id=#{id}")
+    void deleteComment(@Param("id") String id);
 }
