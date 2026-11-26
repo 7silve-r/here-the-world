@@ -134,6 +134,6 @@ public class InteractionService {
                     c.setCreatedAt(Values.now());
                     socialMapper.insertComment(c);
                     return views.comment(c, v);
-                })
+                });
     }
 }
