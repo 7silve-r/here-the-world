@@ -5,6 +5,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.nio.ByteBuffer;
 import java.nio.file.LinkOption;
 import java.nio.file.StandardOpenOption;
@@ -27,6 +32,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class MediaEngine {
     public record Info(String mime, String type, Integer width, Integer height, Long durationMs) {}
+    public record Output(String playback, String thumbnail) {}
 
     @Autowired
     private FileStorage storage;
@@ -72,29 +78,114 @@ public class MediaEngine {
                 mime = "image/gif";
             }
             if (mime != null) {
-                try (var input = ImageIO.createImageInputStream(file.toFile())) {
-                    if (input == null) throw new IOException("Cannot open image input");
-                    Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
-                    if (!readers.hasNext()) {
-                        throw new IOException("Unsupported image decoder");
-                    }
-                    ImageReader reader = readers.next();
-                    try {
-                        reader.setInput(input);
-                        int w = reader.getWidth(0);
-                        int h = reader.getHeight(0);
-                        checkPixels(w, h);
-                        if (reader.read(0) == null) {
-                            throw new IOException("Corrupt image");
-                        }
-                        return new Info(mime, "IMAGE", w, h, null);
-                    } finally {
-                        reader.dispose();
-                    }
-                }
+                BufferedImage image = readImage(file);
+                if (image == null) throw new IOException("Unsupported image decoder");
+                return new Info(mime, "IMAGE", image.getWidth(), image.getHeight(), null);
             }
         }
         return probe(file, head);
+    }
+
+    public Output process(String id, String key, Info info) throws IOException {
+        if (id == null || !id.matches("[A-Za-z0-9_-]{1,160}")) {
+            throw new IllegalArgumentException("Invalid media output id");
+        }
+        Objects.requireNonNull(info, "info");
+        Path input = storage.path(key);
+        if (!Files.isRegularFile(input, LinkOption.NOFOLLOW_LINKS)) {
+            throw new IOException("Media input is not a regular file");
+        }
+        List<String> created = new ArrayList<>();
+        try {
+            if ("IMAGE".equals(info.type())) {
+                String thumb = "thumbnails/" + id + ".jpg";
+                reserve(thumb, created);
+                image(id, input, info, thumb, created);
+                checkOutputs(null, created);
+                return new Output(key, thumb);
+            }
+            throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "不支持的媒体分类");
+        } catch (IOException | RuntimeException | Error failure) {
+            discard(created, failure);
+            throw failure;
+        }
+    }
+
+    private BufferedImage readImage(Path file) throws IOException {
+        try (var input = ImageIO.createImageInputStream(file.toFile())) {
+            if (input == null) throw new IOException("Cannot open image input");
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) return null;
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input);
+                checkPixels(reader.getWidth(0), reader.getHeight(0));
+                BufferedImage image = reader.read(0);
+                if (image == null) throw new IOException("Corrupt image");
+                return image;
+            } finally {
+                reader.dispose();
+            }
+        }
+    }
+
+    private void image(String id, Path input, Info info, String thumb, List<String> created)
+            throws IOException {
+        BufferedImage image = readImage(input);
+        String frame = null;
+        if (image == null) {
+            if (!"image/webp".equals(info.mime())) throw new IOException("Unsupported image decoder");
+            // 先输出透明 PNG，再统一生成白底 JPEG。
+            frame = "temporary/" + id + "-frame.png";
+            reserve(frame, created);
+            run(List.of(
+                    ffmpeg, "-nostdin", "-v", "error", "-y", "-filter_threads", "1",
+                    "-protocol_whitelist", "file,pipe", "-threads", Integer.toString(threads),
+                    "-i", input.toString(), "-map", "0:v:0", "-frames:v", "1",
+                    "-vf", "scale=w='min(640,iw)':h='min(640,ih)':force_original_aspect_ratio=decrease",
+                    "-threads", Integer.toString(threads), storage.path(frame).toString()),
+                    thumbnailTimeout, created);
+            image = readImage(storage.path(frame));
+            if (image == null) throw new IOException("Cannot decode generated image frame");
+        }
+        double ratio = Math.min(1, 640d / Math.max(image.getWidth(), image.getHeight()));
+        int width = Math.max(1, (int) (image.getWidth() * ratio));
+        int height = Math.max(1, (int) (image.getHeight() * ratio));
+        BufferedImage output = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D graphics = output.createGraphics();
+        try {
+            graphics.setColor(Color.WHITE);
+            graphics.fillRect(0, 0, width, height);
+            graphics.setRenderingHint(
+                    RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+            graphics.drawImage(image, 0, 0, width, height, null);
+        } finally {
+            graphics.dispose();
+        }
+        if (!ImageIO.write(output, "jpg", storage.path(thumb).toFile())) {
+            throw new IOException("No JPEG writer");
+        }
+        if (frame != null) {
+            storage.delete(frame);
+            created.remove(frame);
+        }
+    }
+
+    private Path reserve(String key, List<String> created) throws IOException {
+        Path path = storage.output(key);
+        Files.createFile(path);
+        created.add(key);
+        return path;
+    }
+
+    private void discard(List<String> created, Throwable failure) {
+        for (String key : created) {
+            try {
+                storage.delete(key);
+            } catch (IOException cleanup) {
+                failure.addSuppressed(cleanup);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -367,7 +458,7 @@ public class MediaEngine {
     }
 
     private void checkOutputs(Path log, List<String> outputs) throws IOException {
-        if (Files.size(log) > maxLogBytes) throw new IOException("Media log too large");
+        if (log != null && Files.size(log) > maxLogBytes) throw new IOException("Media log too large");
         long total = 0;
         for (String key : outputs) {
             Path path = storage.path(key);
