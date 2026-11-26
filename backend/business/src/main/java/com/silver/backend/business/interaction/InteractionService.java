@@ -7,6 +7,7 @@ import com.silver.backend.business.persistence.BookmarkRow;
 import com.silver.backend.business.persistence.CommentRow;
 import com.silver.backend.business.persistence.mapper.SocialMapper;
 import com.silver.backend.business.persistence.mapper.WorkMapper;
+import com.silver.backend.business.system.Requests;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
 import com.silver.backend.infrastructure.TransactionHelper;
@@ -118,5 +119,21 @@ public class InteractionService {
                 rows.stream().map(c -> views.comment(c, v)).toList(),
                 next,
                 more);
+    }
+
+    public Comment createComment(Viewer v, String work, CommentInput input) {
+        return tx.write(
+                "20:work:" + work,
+                () -> {
+                    views.interactable(work, v);
+                    CommentRow c = new CommentRow();
+                    c.setId(Values.id());
+                    c.setWorkId(work);
+                    c.setUserId(v.requiredUser());
+                    c.setBody(Requests.trimmed(input.body(), "body", true));
+                    c.setCreatedAt(Values.now());
+                    socialMapper.insertComment(c);
+                    return views.comment(c, v);
+                })
     }
 }

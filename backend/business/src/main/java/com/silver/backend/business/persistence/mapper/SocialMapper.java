@@ -74,4 +74,10 @@ public interface SocialMapper {
             @Param("at") long at,
             @Param("after") String after,
             @Param("limit") int limit);
+
+    @Insert("""
+        INSERT INTO comments(id,work_id,user_id,body,created_at)
+        VALUES(#{row.id},#{row.workId},#{row.userId},#{row.body},#{row.createdAt})
+    """)
+    void insertComment(@Param("row") CommentRow row);
 }
