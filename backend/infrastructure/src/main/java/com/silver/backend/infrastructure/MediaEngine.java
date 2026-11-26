@@ -104,6 +104,7 @@ public class MediaEngine {
                 checkOutputs(null, created);
                 return new Output(key, thumb);
             }
+            if ("VIDEO".equals(info.type())) return video(id, input, created);
             throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "不支持的媒体分类");
         } catch (IOException | RuntimeException | Error failure) {
             discard(created, failure);
@@ -176,6 +177,40 @@ public class MediaEngine {
         Files.createFile(path);
         created.add(key);
         return path;
+    }
+
+    private Output video(String id, Path input, List<String> created) throws IOException {
+        String playback = "processed/" + id + ".mp4";
+        String thumb = "thumbnails/" + id + ".jpg";
+        reserve(playback, created);
+        reserve(thumb, created);
+        run(List.of(
+                ffmpeg, "-nostdin", "-v", "error", "-y", "-filter_threads", "1",
+                "-protocol_whitelist", "file,pipe", "-threads", Integer.toString(threads),
+                "-i", input.toString(), "-map", "0:V:0", "-map", "0:a:0?",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+                "-pix_fmt", "yuv420p", "-vf",
+                "scale=w='max(2,trunc(iw/2)*2)':h='max(2,trunc(ih/2)*2)'",
+                "-c:a", "aac", "-b:a", "192k", "-threads", Integer.toString(threads),
+                "-movflags", "+faststart", storage.path(playback).toString()),
+                processTimeout, created);
+        requireOutput(playback);
+        run(List.of(
+                ffmpeg, "-nostdin", "-v", "error", "-y", "-filter_threads", "1",
+                "-protocol_whitelist", "file,pipe", "-threads", Integer.toString(threads),
+                "-i", storage.path(playback).toString(), "-map", "0:V:0", "-frames:v", "1",
+                "-vf", "scale=w='min(640,iw)':h='min(640,ih)':force_original_aspect_ratio=decrease",
+                "-threads", Integer.toString(threads), storage.path(thumb).toString()),
+                thumbnailTimeout, created);
+        requireOutput(thumb);
+        return new Output(playback, thumb);
+    }
+
+    private void requireOutput(String key) throws IOException {
+        Path path = storage.path(key);
+        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) || Files.size(path) == 0) {
+            throw new IOException("Media processor produced no output");
+        }
     }
 
     private void discard(List<String> created, Throwable failure) {
