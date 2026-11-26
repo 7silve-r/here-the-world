@@ -50,4 +50,15 @@ public class InteractionController {
                 req,
                 service.bookmarks(RequestContext.viewer(req), cursor, limit));
     }
+
+    @GetMapping("/works/{workId}/comments")
+    public ResponseEntity<?> comments(
+            @PathVariable("workId") String workId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer limit,
+            HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.comments(RequestContext.viewer(req), workId, cursor, limit));
+    }
 }
