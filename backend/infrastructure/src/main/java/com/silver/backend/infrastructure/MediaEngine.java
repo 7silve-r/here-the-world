@@ -105,6 +105,7 @@ public class MediaEngine {
                 return new Output(key, thumb);
             }
             if ("VIDEO".equals(info.type())) return video(id, input, created);
+            if ("AUDIO".equals(info.type())) return audio(id, input, created);
             throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "不支持的媒体分类");
         } catch (IOException | RuntimeException | Error failure) {
             discard(created, failure);
@@ -211,6 +212,19 @@ public class MediaEngine {
         if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) || Files.size(path) == 0) {
             throw new IOException("Media processor produced no output");
         }
+    }
+
+    private Output audio(String id, Path input, List<String> created) throws IOException {
+        String playback = "processed/" + id + ".mp3";
+        reserve(playback, created);
+        run(List.of(
+                ffmpeg, "-nostdin", "-v", "error", "-y",
+                "-protocol_whitelist", "file,pipe", "-threads", Integer.toString(threads),
+                "-i", input.toString(), "-map", "0:a:0", "-vn", "-c:a", "libmp3lame",
+                "-b:a", "192k", "-threads", Integer.toString(threads),
+                storage.path(playback).toString()), processTimeout, created);
+        requireOutput(playback);
+        return new Output(playback, null);
     }
 
     private void discard(List<String> created, Throwable failure) {
