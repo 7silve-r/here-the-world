@@ -81,10 +81,13 @@ public class InteractionController {
             HttpServletRequest req) {
         CommentInput input = requests.decode("CommentInput", body, CommentInput.class);
         Viewer v = RequestContext.viewer(req);
+        String user = v.requiredUser();
+        control.limit("comment-source", req.getRemoteAddr(), 60, 60);
+        control.limit("comment-account", user, 20, 60);
         return HttpReplies.reply(
                 req,
                 control.idempotency(
-                        v.requiredUser(),
+                        user,
                         "/works/" + workId + "/comments",
                         key,
                         body,
