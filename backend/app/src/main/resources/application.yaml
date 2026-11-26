@@ -54,6 +54,13 @@ htw:
   jobs-enabled: ${JOBS_ENABLED:true}
   ffmpeg: ${FFMPEG:ffmpeg}
   ffprobe: ${FFPROBE:ffprobe}
+  media:
+    probe-timeout-seconds: ${MEDIA_PROBE_TIMEOUT_SECONDS:20}
+    process-timeout-seconds: ${MEDIA_PROCESS_TIMEOUT_SECONDS:480}
+    thumbnail-timeout-seconds: ${MEDIA_THUMBNAIL_TIMEOUT_SECONDS:60}
+    max-log-bytes: ${MEDIA_MAX_LOG_BYTES:2000000}
+    max-output-bytes: ${MEDIA_MAX_OUTPUT_BYTES:536870912}
+    threads: ${MEDIA_THREADS:2}
   task-poll-ms: ${TASK_POLL_MS:1000}
   cleanup:
     task-done-days: ${CLEANUP_TASK_DONE_DAYS:7}

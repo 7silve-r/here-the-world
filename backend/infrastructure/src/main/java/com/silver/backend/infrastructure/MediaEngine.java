@@ -36,6 +36,18 @@ public class MediaEngine {
     private String ffmpeg;
     @Value("${htw.ffprobe:ffprobe}")
     private String ffprobe;
+    @Value("${htw.media.probe-timeout-seconds:20}")
+    private int probeTimeout = 20;
+    @Value("${htw.media.process-timeout-seconds:480}")
+    private int processTimeout = 480;
+    @Value("${htw.media.thumbnail-timeout-seconds:60}")
+    private int thumbnailTimeout = 60;
+    @Value("${htw.media.max-log-bytes:2000000}")
+    private long maxLogBytes = 2_000_000;
+    @Value("${htw.media.max-output-bytes:536870912}")
+    private long maxOutputBytes = 536_870_912;
+    @Value("${htw.media.threads:2}")
+    private int threads = 2;
 
     private void checkPixels(int w, int h) {
         if (w <= 0 || h <= 0 || (long) w * h > 50_000_000L) {
@@ -104,7 +116,7 @@ public class MediaEngine {
                                         + "stream_disposition=attached_pic",
                                 "-of", "json",
                                 file.toString()),
-                        20));
+                        probeTimeout));
 
         List<Map<String, Object>> streams =
                 (List<Map<String, Object>>) result.getOrDefault("streams", List.of());
@@ -299,33 +311,91 @@ public class MediaEngine {
     }
 
     private String run(List<String> command, int timeout) throws IOException {
-        Path log = Files.createTempFile("htw-media-", ".txt");
+        return run(command, timeout, List.of());
+    }
+
+    private String run(List<String> command, int timeout, List<String> outputs) throws IOException {
+        if (timeout <= 0 || maxLogBytes <= 0 || maxOutputBytes <= 0 || threads <= 0) {
+            throw new IllegalStateException("Media processing limits must be positive");
+        }
+        Path log = Files.createTempFile(
+                storage.output("temporary/media.log").getParent(), "media-", ".log");
         Process process = null;
+        Throwable failure = null;
         try {
-            process =
-                    new ProcessBuilder(command)
-                            .redirectErrorStream(true)
-                            .redirectOutput(log.toFile())
-                            .start();
-            if (!process.waitFor(timeout, TimeUnit.SECONDS)) {
-                process.destroyForcibly();
-                throw new IOException("Media processor timed out");
+            process = new ProcessBuilder(command)
+                    .redirectErrorStream(true)
+                    .redirectOutput(log.toFile())
+                    .start();
+            process.getOutputStream().close();
+            long started = System.nanoTime();
+            while (!process.waitFor(50, TimeUnit.MILLISECONDS)) {
+                checkOutputs(log, outputs);
+                if (System.nanoTime() - started >= TimeUnit.SECONDS.toNanos(timeout)) {
+                    throw new IOException("Media processor timed out");
+                }
             }
-            if (process.exitValue() != 0) {
-                throw new IOException("Media processor rejected input");
-            }
-            if (Files.size(log) > 2_000_000) {
-                throw new IOException("Media metadata too large");
-            }
+            checkOutputs(log, outputs);
+            if (process.exitValue() != 0) throw new IOException("Media processor rejected input");
             return Files.readString(log, StandardCharsets.UTF_8);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            if (process != null) {
-                process.destroyForcibly();
-            }
-            throw new IOException(e);
+            IOException interrupted = new IOException("Media processing interrupted", e);
+            failure = interrupted;
+            throw interrupted;
+        } catch (IOException | RuntimeException | Error e) {
+            failure = e;
+            throw e;
         } finally {
-            Files.deleteIfExists(log);
+            IOException cleanup = null;
+            try {
+                stop(process);
+            } catch (IOException e) {
+                cleanup = e;
+            }
+            try {
+                Files.deleteIfExists(log);
+            } catch (IOException e) {
+                if (cleanup == null) cleanup = e;
+                else cleanup.addSuppressed(e);
+            }
+            if (cleanup != null) {
+                if (failure != null) failure.addSuppressed(cleanup);
+                else throw cleanup;
+            }
+        }
+    }
+
+    private void checkOutputs(Path log, List<String> outputs) throws IOException {
+        if (Files.size(log) > maxLogBytes) throw new IOException("Media log too large");
+        long total = 0;
+        for (String key : outputs) {
+            Path path = storage.path(key);
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) continue;
+            if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
+                throw new IOException("Invalid media output");
+            }
+            long size = Files.size(path);
+            if (size > maxOutputBytes - total) throw new IOException("Media output too large");
+            total += size;
+        }
+    }
+
+    private void stop(Process process) throws IOException {
+        if (process == null || !process.isAlive()) return;
+        // 暂时清除中断标记，等待子进程退出，最后恢复标记。
+        boolean interrupted = Thread.interrupted();
+        try {
+            process.descendants().forEach(ProcessHandle::destroyForcibly);
+            process.destroyForcibly();
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                throw new IOException("Media processor did not terminate");
+            }
+        } catch (InterruptedException e) {
+            interrupted = true;
+            throw new IOException("Interrupted while terminating media processor", e);
+        } finally {
+            if (interrupted) Thread.currentThread().interrupt();
         }
     }
 }
