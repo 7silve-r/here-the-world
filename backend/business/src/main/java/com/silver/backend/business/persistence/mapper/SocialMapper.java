@@ -61,4 +61,17 @@ public interface SocialMapper {
 
     @Select("SELECT * FROM comments WHERE id=#{id}")
     CommentRow comment(@Param("id") String id);
+
+    @Select("""
+        SELECT * FROM comments 
+                 WHERE work_id=#{work} 
+                   AND (created_at>#{at} OR(created_at=#{at} AND id>#{after}))
+                 ORDER BY created_at,id 
+                 LIMIT #{limit}
+    """)
+    List<CommentRow> commentPage(
+            @Param("work") String work,
+            @Param("at") long at,
+            @Param("after") String after,
+            @Param("limit") int limit);
 }

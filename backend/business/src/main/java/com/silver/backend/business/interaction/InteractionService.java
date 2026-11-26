@@ -1,11 +1,10 @@
 package com.silver.backend.business.interaction;
 
 import com.silver.backend.business.Views;
-import com.silver.backend.business.dto.InteractionState;
-import com.silver.backend.business.dto.WorkCard;
-import com.silver.backend.business.dto.WorkPage;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.feed.Pages;
 import com.silver.backend.business.persistence.BookmarkRow;
+import com.silver.backend.business.persistence.CommentRow;
 import com.silver.backend.business.persistence.mapper.SocialMapper;
 import com.silver.backend.business.persistence.mapper.WorkMapper;
 import com.silver.backend.common.Values;
@@ -14,10 +13,7 @@ import com.silver.backend.infrastructure.TransactionHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 @Service
 public class InteractionService {
@@ -101,5 +97,26 @@ public class InteractionService {
                 .map(w -> views.card(w, v))
                 .toList();
         return new WorkPage(cards, next, more);
+    }
+
+    public CommentPage comments(Viewer v, String work, String cursor, Integer requested) {
+        views.interactable(work, v);
+        int limit = pages.limit(requested);
+        String route = "/works/" + work + "/comments";
+        Pages.Position pos = pages.position(cursor, "/me/comments", "", true);
+        List<CommentRow> rows = socialMapper.commentPage(work, pos.time(), pos.id(), limit + 1);
+        boolean more = rows.size() > limit;
+        if (more) {
+            rows = rows.subList(0, limit);
+        }
+        String next = null;
+        if (more) {
+            CommentRow last = rows.get(rows.size() - 1);
+            next = pages.cursor(route, "", last.getCreatedAt(), last.getId());
+        }
+        return new CommentPage(
+                rows.stream().map(c -> views.comment(c, v)).toList(),
+                next,
+                more);
     }
 }
