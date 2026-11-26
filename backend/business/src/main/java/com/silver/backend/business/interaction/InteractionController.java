@@ -90,4 +90,11 @@ public class InteractionController {
                         body,
                         () -> Reply.of(201, service.createComment(v, workId, input))));
     }
+
+    @DeleteMapping("/comments/{commentId}")
+    public ResponseEntity<?> deleteComment(@PathVariable("commentId") String commentId, HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.deleteComment(RequestContext.viewer(req), commentId));
+    }
 }
