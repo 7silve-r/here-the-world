@@ -271,7 +271,10 @@ public class MediaEngine {
             case "webp" -> "webp_pipe";
             default -> container;
         };
-        if (streams.isEmpty() || !formats.contains(expected)) {
+        boolean supportedFormat = formats.contains(expected)
+                || "webp".equals(container)
+                && (formats.contains("image2") || formats.contains("webp"));
+        if (streams.isEmpty() || !supportedFormat) {
             throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "不支持的真实媒体格式");
         }
 
