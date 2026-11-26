@@ -1,10 +1,7 @@
 package com.silver.backend.business;
 
 import com.silver.backend.business.dto.*;
-import com.silver.backend.business.persistence.AssetRow;
-import com.silver.backend.business.persistence.MusicRow;
-import com.silver.backend.business.persistence.UserRow;
-import com.silver.backend.business.persistence.WorkRow;
+import com.silver.backend.business.persistence.*;
 import com.silver.backend.business.persistence.mapper.*;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
@@ -243,5 +240,17 @@ public class Views {
             throw new ApiException(409, "WORK_NOT_PUBLISHED", "作品尚未发布");
         }
         return w;
+    }
+
+    public Comment comment(CommentRow c,  Viewer v) {
+        WorkRow w = workMapper.get(c.getWorkId());
+        return new Comment(
+                c.getId(),
+                c.getWorkId(),
+                user(c.getUserId()),
+                c.getBody(),
+                Objects.equals(c.getUserId(), v.userId())
+                || (w != null && Objects.equals(w.getOwnerId(), v.userId())),
+                Values.time(c.getCreatedAt()));
     }
 }

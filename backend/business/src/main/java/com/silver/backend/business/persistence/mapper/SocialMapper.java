@@ -1,6 +1,7 @@
 package com.silver.backend.business.persistence.mapper;
 
 import com.silver.backend.business.persistence.BookmarkRow;
+import com.silver.backend.business.persistence.CommentRow;
 import org.apache.ibatis.annotations.*;
 
 import java.util.List;
@@ -57,4 +58,7 @@ public interface SocialMapper {
             @Param("at") long at,
             @Param("after") String after,
             @Param("limit") int limit);
+
+    @Select("SELECT * FROM comments WHERE id=#{id}")
+    CommentRow comment(@Param("id") String id);
 }
