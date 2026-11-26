@@ -106,7 +106,7 @@ public class InteractionService {
         views.interactable(work, v);
         int limit = pages.limit(requested);
         String route = "/works/" + work + "/comments";
-        Pages.Position pos = pages.position(cursor, "/me/comments", "", true);
+        Pages.Position pos = pages.position(cursor, route, "", true);
         List<CommentRow> rows = socialMapper.commentPage(work, pos.time(), pos.id(), limit + 1);
         boolean more = rows.size() > limit;
         if (more) {
