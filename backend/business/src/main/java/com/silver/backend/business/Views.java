@@ -31,6 +31,10 @@ public class Views {
         this.baseUrl = baseUrl.replaceAll("/+$", "");
     }
 
+    public String baseUrl() {
+        return baseUrl;
+    }
+
     private boolean publicAsset(String id) {
         return assetMapper.avatarReferences(id) > 0 || assetMapper.publicWorkReferences(id) > 0;
     }
