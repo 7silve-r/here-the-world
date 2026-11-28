@@ -11,9 +11,7 @@ import com.silver.backend.business.persistence.mapper.AssetMapper;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
-import com.silver.backend.infrastructure.Crypto;
-import com.silver.backend.infrastructure.FileStorage;
-import com.silver.backend.infrastructure.TransactionHelper;
+import com.silver.backend.infrastructure.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +33,10 @@ public class MediaService {
     private Views  views;
     @Autowired
     private FileStorage storage;
+    @Autowired
+    private TaskQueue taskQueue;
+    @Autowired
+    private MediaEngine engine;
 
     public List<UploadRule> rules() {
         return List.of(
@@ -224,5 +226,64 @@ public class MediaService {
                     }
                     return new Ack(true);
                 });
+    }
+
+    private void discardOutput(String id) {
+        for (String key :
+                List.of("thumbnails/" + id + ".jpg", "processed/" + id + ".mp4", "processed/" + id + ".mp3")) {
+            try {
+                storage.delete(key);
+            } catch (IOException ignored) {
+
+            }
+        }
+    }
+
+    public void process(Map<String, Object> payload) {
+        AssetRow before = mapper.asset(payload.get("assetId").toString());
+        if (before == null || !"PROCESSING".equals(before.getStatus())) {
+            return;
+        }
+        String outputId = before.getId() + "-" + taskQueue.executionId();
+        try {
+            MediaEngine.Info info = engine.inspect(before.getStorageKey());
+            MediaEngine.Output out = engine.process(outputId, before.getStorageKey(), info);
+            boolean accepted =
+                    tx.write(
+                            "30:asset:" + before.getId(),
+                            () -> {
+                                if (!taskQueue.ownsExecution()) {
+                                    return false;
+                                }
+                                AssetRow a = mapper.asset(before.getId());
+                                if (a != null && "PROCESSING".equals(a.getStatus())) {
+                                    a.setPlaybackKey(out.playback());
+                                    a.setThumbnailKey(out.thumbnail());
+                                    a.setStatus("READY");
+                                    a.setFailureCode(null);
+                                    mapper.updateAsset(a);
+                                    return true;
+                                }
+                                return false;
+                            });
+            if (!accepted) {
+                discardOutput(outputId);
+            }
+        } catch (Exception failed) {
+            tx.run(
+                    "30:asset:" + before.getId(),
+                    () -> {
+                        if (!taskQueue.ownsExecution()) {
+                            return;
+                        }
+                        AssetRow a = mapper.asset(before.getId());
+                        if (a != null && "PROCESSING".equals(a.getStatus())) {
+                            a.setStatus("FAILED");
+                            a.setFailureCode("MEDIA_PROCESSING_FAILED");
+                            mapper.updateAsset(a);
+                        }
+                    });
+            discardOutput(outputId);
+        }
     }
 }
