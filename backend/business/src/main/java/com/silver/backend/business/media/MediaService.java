@@ -174,20 +174,24 @@ public class MediaService {
                         mapper.updateAsset(uploaded);
                     });
         } catch (IOException | RuntimeException failure) {
-            tx.run(
-                    resources,
-                    () -> {
-                        try {
-                            storage.delete(a.getStorageKey());
-                        } catch (IOException cleanup) {
-                            failure.addSuppressed(cleanup);
-                        }
-                        UploadRow current = mapper.upload(id);
-                        if (current != null && "RECEIVING".equals(current.getState())) {
-                            current.setState("CREATED");
-                            mapper.updateUpload(current);
-                        }
-                    });
+            try {
+                tx.run(
+                        resources,
+                        () -> {
+                            try {
+                                storage.delete(a.getStorageKey());
+                            } catch (IOException cleanup) {
+                                failure.addSuppressed(cleanup);
+                            }
+                            UploadRow current = mapper.upload(id);
+                            if (current != null && "RECEIVING".equals(current.getState())) {
+                                current.setState("CREATED");
+                                mapper.updateUpload(current);
+                            }
+                        });
+            } catch (RuntimeException recovery) {
+                if (recovery != failure) failure.addSuppressed(recovery);
+            }
             throw failure;
         }
     }
