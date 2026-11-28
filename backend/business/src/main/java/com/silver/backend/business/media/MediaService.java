@@ -166,6 +166,9 @@ public class MediaService {
                         }
                         current.setState("UPLOADED");
                         mapper.updateUpload(current);
+                        AssetRow uploaded = mapper.asset(current.getAssetId());
+                        uploaded.setStatus("UPLOADED");
+                        mapper.updateAsset(uploaded);
                     });
         } catch (IOException | RuntimeException failure) {
             tx.run(
