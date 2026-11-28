@@ -3296,7 +3296,7 @@
           "Media"
         ],
         "summary": "解析音乐分享链接并返回可用展示方式",
-        "description": "Allowlisted official metadata only. Unknown valid HTTPS music links degrade to EXTERNAL/PARTIAL; never promise an extractable audio URL.",
+        "description": "Validate and normalize an HTTPS music share URL locally, identify its provider, and store it for the current user. Returns PARTIAL metadata and EXTERNAL playback without fetching remote pages or providing audio/embed URLs. Unknown valid HTTPS hosts use provider OTHER.",
         "security": [
           {
             "bearerAuth": []
@@ -4493,7 +4493,7 @@
             "type": "string",
             "maxLength": 4096,
             "minLength": 1,
-            "description": "An HTTPS URL or copied share text containing exactly one supported HTTPS URL."
+            "description": "An HTTPS URL or copied share text containing exactly one URL. Non-HTTPS URLs and user information in the authority are rejected. Unicode hosts and URL components are normalized to ASCII; the normalized URL must also fit 4096 characters."
           }
         },
         "required": [
