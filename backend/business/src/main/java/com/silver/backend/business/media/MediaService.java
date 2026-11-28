@@ -333,7 +333,7 @@ public class MediaService {
                     current.setState("COMPLETED");
                     current.setFinishedAt(Values.now());
                     mapper.updateUpload(current);
-                    taskQueue.enqueue("ASSET", Values.map("asset", row.getId()));
+                    taskQueue.enqueue("ASSET", Values.map("assetId", row.getId()));
                     return views.asset(row, viewer);
                 });
     }
