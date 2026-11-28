@@ -25,10 +25,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
 import java.io.OutputStream;
 import java.time.Instant;
 import java.util.Arrays;
@@ -138,10 +136,20 @@ class SecurityFlowTest extends BackendTestSupport {
 
     @Test
     void uploadUsesRawStream() throws Exception {
-        mvc.perform(put(UPLOAD).contentType(MediaType.APPLICATION_OCTET_STREAM)
-                        .content(new byte[MAX_JSON_BYTES + 1]))
-                .andExpect(status().isOk())
-                .andExpect(content().string(Integer.toString(MAX_JSON_BYTES + 1)));
+        ApiSecurityFilter filter = new ApiSecurityFilter(auth, crypto, errors, control, ORIGIN);
+        MockHttpServletRequest request = new MockHttpServletRequest("PUT", UPLOAD);
+        request.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+        request.setContent(new byte[MAX_JSON_BYTES + 1]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        long[] received = {0};
+
+        filter.doFilter(request, response, (incoming, outgoing) -> {
+            assertSame(request, incoming, "二进制上传不应套用 JSON 限流包装器");
+            received[0] = incoming.getInputStream().transferTo(OutputStream.nullOutputStream());
+        });
+
+        assertEquals(200, response.getStatus());
+        assertEquals(MAX_JSON_BYTES + 1L, received[0]);
     }
 
     @ParameterizedTest
@@ -181,10 +189,5 @@ class SecurityFlowTest extends BackendTestSupport {
             return RequestContext.viewer(request).userId();
         }
 
-        @PutMapping(UPLOAD)
-        String upload(HttpServletRequest request) throws IOException {
-            long bytes = request.getInputStream().transferTo(OutputStream.nullOutputStream());
-            return Long.toString(bytes);
-        }
     }
 }
