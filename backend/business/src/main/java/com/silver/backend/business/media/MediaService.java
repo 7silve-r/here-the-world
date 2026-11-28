@@ -86,7 +86,7 @@ public class MediaService {
                     a.setStatus("CREATED");
                     a.setMimeType(in.contentType());
                     a.setSizeBytes(in.sizeBytes());
-                    a.setCleanedAt(Values.now());
+                    a.setCreatedAt(Values.now());
                     a.setStorageKey("originals/" + a.getId());
                     mapper.insertAsset(a);
                     var u = new UploadRow();
