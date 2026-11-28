@@ -54,4 +54,14 @@ public interface AssetMapper {
 
     @Update("UPDATE uploads SET state=#{row.state},finished_at=#{row.finishedAt} WHERE id=#{row.id}")
     void updateUpload(@Param("row") UploadRow row);
+
+    @Update("""
+        UPDATE assets 
+        SET status=#{row.status},mime_type=#{row.mimeType},storage_key=#{row.storageKey},
+            playback_key=#{row.playbackKey},thumbnail_key=#{row.thumbnailKey},failure_code=#{row.failureCode},
+            size_bytes=#{row.sizeBytes},width=#{row.width},height=#{row.height},
+            duration_ms=#{row.durationMs},cleaned_at=#{row.cleanedAt}
+        WHERE id=#{row.id}
+    """)
+    void updateAsset(@Param("row") AssetRow row);
 }

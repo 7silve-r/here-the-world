@@ -1,6 +1,7 @@
 package com.silver.backend.business.media;
 
 import com.silver.backend.business.Views;
+import com.silver.backend.business.dto.Ack;
 import com.silver.backend.business.dto.UploadInput;
 import com.silver.backend.business.dto.UploadRule;
 import com.silver.backend.business.dto.UploadTicket;
@@ -183,5 +184,35 @@ public class MediaService {
                     });
             throw failure;
         }
+    }
+
+    private UploadRow owned(String id, Viewer viewer) {
+        UploadRow u = mapper.upload(id);
+        if (u == null || !u.getOwnerId().equals(viewer.requiredUser())) {
+            throw new ApiException(404, "UPLOAD_NOT_FOUND", "上传不存在");
+        }
+        return u;
+    }
+
+    public Ack cancel(String id, Viewer viewer) {
+        UploadRow hint = owned(id, viewer);
+        return tx.write(
+                uploadLocks(hint),
+                () -> {
+                    UploadRow u = owned(id, viewer);
+                    if ("COMPLETED".equals(u.getState())) {
+                        throw new ApiException(409, "UPLOAD_ALREADY_COMPLETED", "上传已完成");
+                    }
+                    if (!"CANCELLED".equals(u.getState())) {
+                        u.setState("CANCELLED");
+                        u.setFinishedAt(Values.now());
+                        mapper.updateUpload(u);
+                        var a = mapper.asset(u.getAssetId());
+                        a.setStatus("FAILED");
+                        a.setFailureCode("UPLOAD_CANCELLED");
+                        mapper.updateAsset(a);
+                    }
+                    return new Ack(true);
+                });
     }
 }
