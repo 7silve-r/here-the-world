@@ -13,6 +13,8 @@ import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -28,6 +30,7 @@ import java.util.List;
 import java.util.Set;
 
 public class ApiSecurityFilter extends OncePerRequestFilter {
+    private static final Logger LOG = LoggerFactory.getLogger(ApiSecurityFilter.class);
     private final AuthService service;
     private final Crypto crypto;
     private final HttpErrors errors;
@@ -77,6 +80,9 @@ public class ApiSecurityFilter extends OncePerRequestFilter {
         } catch (ApiException error) {
             errors.write(request, response, error);
         } catch (DataAccessException error) {
+            LOG.error("Security database error requestId={}, method={}, path={}, type={}",
+                    request.getAttribute("requestId"), request.getMethod(), request.getRequestURI(),
+                    error.getClass().getSimpleName(), error);
             errors.write(request, response, new ApiException(503, "SERVICE_UNAVAILABLE", "数据库暂时不可用"));
         } finally {
             SecurityContextHolder.clearContext();
