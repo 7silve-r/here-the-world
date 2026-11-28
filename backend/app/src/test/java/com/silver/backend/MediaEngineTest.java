@@ -26,6 +26,7 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -620,7 +621,10 @@ class MediaEngineTest {
 
     public static class ProcessStub {
         public static void main(String[] args) throws Exception {
-            Files.writeString(Path.of(args[1]), Long.toString(ProcessHandle.current().pid()));
+            Path ready = Path.of(args[1]);
+            Path pending = ready.resolveSibling(ready.getFileName() + ".part");
+            Files.writeString(pending, Long.toString(ProcessHandle.current().pid()));
+            Files.move(pending, ready, StandardCopyOption.ATOMIC_MOVE);
             switch (args[0]) {
                 case "text" -> System.out.print("processor output");
                 case "fail" -> System.exit(9);
