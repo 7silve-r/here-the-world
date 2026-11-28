@@ -16,6 +16,9 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -38,6 +41,8 @@ public class MediaService {
     private TaskQueue taskQueue;
     @Autowired
     private MediaEngine engine;
+
+    public record Download(Path file, String mime) {}
 
     public List<UploadRule> rules() {
         return List.of(
@@ -371,5 +376,46 @@ public class MediaService {
             throw new ApiException(404, "ASSET_NOT_FOUND", "资产不存在");
         }
         return views.asset(a, viewer);
+    }
+
+    public Download download(String id, String variant, Viewer viewer, boolean privateMedia)
+            throws IOException {
+        AssetRow a = mapper.asset(id);
+        if (a == null
+                || !"READY".equals(a.getStatus())
+                || (privateMedia
+                ? !Objects.equals(a.getOwnerId(), viewer.requiredUser())
+                : !views.publicAsset(a.getId()))) {
+            throw new ApiException(404, "ASSET_NOT_FOUND", "资产不存在");
+        }
+        String key =
+                switch (variant) {
+                    case "file" -> a.getPlaybackKey() == null ? a.getStorageKey() : a.getPlaybackKey();
+                    case "thumbnail" -> a.getThumbnailKey();
+                    default -> null;
+                };
+        if (key == null) {
+            throw new ApiException(404, "ASSET_NOT_FOUND", "文件不存在");
+        }
+        String mime =
+                Objects.equals(key, a.getThumbnailKey()) ? "image/jpeg"
+                        : key.endsWith(".mp4") ? "video/mp4"
+                        : key.endsWith(".mp3") ? "audio/mpeg"
+                        : a.getMimeType();
+        Path file = storage.path(key);
+        if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
+            LOG.warn("Media file unavailable assetId={}, variant={}, privateMedia={}, key={}",
+                    a.getId(),
+                    variant,
+                    privateMedia,
+                    key);
+            throw new ApiException(404, "ASSET_NOT_FOUND", "文件不可用");
+        }
+        LOG.debug(
+                "Media file resolved assetId={}, variant={}, privateMedia={}",
+                a.getId(),
+                variant,
+                privateMedia);
+        return new Download(file, mime);
     }
 }
