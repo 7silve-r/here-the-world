@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.Map;
 
 @RestController
@@ -39,5 +40,12 @@ public class MediaController {
                         key,
                         body,
                         () -> Reply.of(201, service.create(v, in))));
+    }
+
+    @PutMapping("/media/upload")
+    public ResponseEntity<?> transfer(@RequestParam String ticket, HttpServletRequest req)
+            throws IOException {
+        service.transfer(ticket, req.getInputStream());
+        return ResponseEntity.ok().build();
     }
 }
