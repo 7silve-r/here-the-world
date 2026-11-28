@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class MediaService {
@@ -208,7 +209,7 @@ public class MediaService {
                     if ("COMPLETED".equals(u.getState())) {
                         throw new ApiException(409, "UPLOAD_ALREADY_COMPLETED", "上传已完成");
                     }
-                    if (!"CANCELLED".equals(u.getState())) {
+                    if (!Set.of("CANCELLED", "EXPIRED").contains(u.getState())) {
                         u.setState("CANCELLED");
                         u.setFinishedAt(Values.now());
                         mapper.updateUpload(u);
