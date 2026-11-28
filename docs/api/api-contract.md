@@ -276,6 +276,8 @@ GET Asset 对未公开资源只允许拥有者。公开作品的 READY 媒体及
 
 POST /music-links/resolve 的 input 可为 HTTPS 地址或带一条 HTTPS 地址的分享文案。后端提取、规范化链接，返回 MusicLink ID，发布作品时传 musicLinkId。
 
+解析只执行本地地址校验与存储，不访问分享页、跟随短链跳转或抓取音频。完整 URL 优先保留；分享文案支持常见引号、紧邻 URL 的成对括号及句末标点。HTTP 等非 HTTPS 地址、带 userinfo 的地址和包含多条链接的文案返回 400 MUSIC_LINK_INVALID。域名按 IDN 转为 ASCII 并小写，移除域名末尾的根标签点及默认 443 端口，规范化路径的点段；查询参数和片段保留，Unicode 内容编码为 ASCII URI。input 和规范化后的 sourceUrl 均不得超过 4096 字符，输入超限按共享校验返回 422，规范化后超限返回 400 MUSIC_LINK_INVALID。
+
 MusicLink.provider 初始枚举为 NETEASE、QQ、KUGOU、SPOTIFY、APPLE_MUSIC、OTHER。provider 只表示来源，不保证元数据解析或嵌入能力。支持的实际嵌入来源由 capabilities.musicEmbedProviders 返回，默认可为空。
 
 playback.mode=EXTERNAL 时 embedUrl=null，前端展示原平台打开按钮；EMBED 时只加载后端返回且允许的官方嵌入 URL。不能将任意音乐分享页地址填入 audio.src，不承诺解析原始音频文件。元数据不可获取时返回 PARTIAL 和可空字段，作品仍可发布。
