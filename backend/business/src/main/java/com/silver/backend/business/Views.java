@@ -35,7 +35,7 @@ public class Views {
         return baseUrl;
     }
 
-    private boolean publicAsset(String id) {
+    public boolean publicAsset(String id) {
         return assetMapper.avatarReferences(id) > 0 || assetMapper.publicWorkReferences(id) > 0;
     }
 

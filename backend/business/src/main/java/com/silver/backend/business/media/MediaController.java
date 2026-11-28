@@ -72,4 +72,11 @@ public class MediaController {
                                 RequestContext.viewer(req),
                                 requests.decode("UploadCompleteInput", body, UploadCompleteInput.class))));
     }
+
+    @GetMapping("/assets/{assetId}")
+    public ResponseEntity<?> get(@PathVariable("assetId") String assetId, HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.get(assetId, RequestContext.viewer(req)));
+    }
 }

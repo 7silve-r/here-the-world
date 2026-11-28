@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -335,5 +336,14 @@ public class MediaService {
                     taskQueue.enqueue("ASSET", Values.map("asset", row.getId()));
                     return views.asset(row, viewer);
                 });
+    }
+
+    public Asset get(String id, Viewer viewer) {
+        AssetRow a = mapper.asset(id);
+        if (a == null
+            || (!Objects.equals(a.getOwnerId(), viewer.userId()) && !views.publicAsset(id))) {
+            throw new ApiException(404, "ASSET_NOT_FOUND", "资产不存在");
+        }
+        return views.asset(a, viewer);
     }
 }
