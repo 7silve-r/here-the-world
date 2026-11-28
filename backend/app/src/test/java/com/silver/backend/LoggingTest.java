@@ -19,6 +19,7 @@ import com.silver.backend.common.ApiException;
 import com.silver.backend.infrastructure.Crypto;
 import com.silver.backend.infrastructure.FileStorage;
 import com.silver.backend.infrastructure.MediaEngine;
+import com.silver.backend.infrastructure.JsonCodec;
 import com.silver.backend.infrastructure.TaskQueue;
 import com.silver.backend.infrastructure.TransactionHelper;
 import org.junit.jupiter.api.Test;
@@ -172,6 +173,97 @@ class LoggingTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {0, 7})
+    void retryLog(int attempts) {
+        QueueFixture fixture = queue("retry", attempts, 1);
+        try (Events events = new Events(TaskQueue.class)) {
+            fixture.queue().tick();
+            ILoggingEvent event = events.only();
+            assertEquals(attempts == 7 ? Level.ERROR : Level.WARN, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("taskId=task-test"));
+            assertTrue(event.getFormattedMessage().contains("kind=MAIL"));
+            assertTrue(event.getFormattedMessage().contains("attempt=" + (attempts + 1)));
+            assertEquals("SMTP offline", event.getThrowableProxy().getMessage());
+            assertPrivate(event.getFormattedMessage());
+        }
+        assertThrows(IllegalStateException.class, fixture.queue()::executionId);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"waiting", "success"})
+    void quietTask(String mode) {
+        QueueFixture fixture = queue(mode, 0, 1);
+        try (Events events = new Events(TaskQueue.class)) {
+            fixture.queue().tick();
+            ILoggingEvent event = events.only();
+            assertEquals(Level.DEBUG, event.getLevel());
+            assertPrivate(event.getFormattedMessage());
+        }
+    }
+
+    @Test
+    void obsoleteTask() {
+        QueueFixture fixture = queue("retry", 7, 0);
+        try (Events events = new Events(TaskQueue.class)) {
+            fixture.queue().tick();
+            assertEquals(Level.DEBUG, events.only().getLevel());
+            assertTrue(events.only().getFormattedMessage().startsWith("Obsolete task failure ignored"));
+        }
+    }
+
+    @Test
+    void taskPersistence() {
+        QueueFixture fixture = queue("retry", 0, 1);
+        var failure = new DataAccessResourceFailureException("state unavailable");
+        doThrow(failure).when(fixture.mapper()).finish(anyString(), anyString(), anyString(), anyLong(),
+                nullable(String.class), anyInt(), anyLong());
+        try (Events events = new Events(TaskQueue.class)) {
+            assertSame(failure, assertThrows(DataAccessResourceFailureException.class, fixture.queue()::tick));
+            ILoggingEvent event = events.only();
+            assertEquals(Level.ERROR, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("taskId=task-test"));
+            assertEquals("state unavailable", event.getThrowableProxy().getMessage());
+            assertEquals("SMTP offline", event.getThrowableProxy().getSuppressed()[0].getMessage());
+        }
+        assertThrows(IllegalStateException.class, fixture.queue()::executionId);
+    }
+
+    private QueueFixture queue(String mode, int attempts, int changed) {
+        TaskQueue queue = new TaskQueue(7, 30, 100);
+        TaskQueue.TaskMapper mapper = mock(TaskQueue.TaskMapper.class);
+        Crypto crypto = mock(Crypto.class);
+        JsonCodec json = mock(JsonCodec.class);
+        ReflectionTestUtils.setField(queue, "mapper", mapper);
+        ReflectionTestUtils.setField(queue, "crypto", crypto);
+        ReflectionTestUtils.setField(queue, "json", json);
+        TaskQueue.Task task = new TaskQueue.Task();
+        task.id = "task-test";
+        task.kind = "MAIL";
+        task.payload = "private-encrypted-payload";
+        task.attempts = attempts;
+        when(mapper.next(anyLong())).thenReturn(task);
+        when(mapper.claim(eq(task.id), anyString(), anyLong(), anyLong())).thenAnswer(call -> {
+            task.leaseToken = call.getArgument(1);
+            return 1;
+        });
+        when(mapper.get(task.id)).thenReturn(task);
+        when(mapper.finish(anyString(), anyString(), anyString(), anyLong(), nullable(String.class), anyInt(), anyLong()))
+                .thenReturn(changed);
+        when(crypto.decrypt(task.payload)).thenReturn("private-decrypted-payload");
+        when(json.readMap(anyString())).thenReturn(Map.of("body", "private-mail-body", "token", "private-reset-token"));
+        queue.register(new TaskQueue.Handler() {
+            @Override public String kind() { return "MAIL"; }
+            @Override public void execute(Map<String, Object> payload) {
+                if ("retry".equals(mode)) throw new IllegalStateException("SMTP offline");
+                if ("waiting".equals(mode)) throw new TaskQueue.Pending();
+            }
+        });
+        return new QueueFixture(queue, mapper);
+    }
+
+    private record QueueFixture(TaskQueue queue, TaskQueue.TaskMapper mapper) {}
+
     private MediaFixture media(boolean owned) throws IOException {
         MediaService service = new MediaService();
         MediaEngine engine = mock(MediaEngine.class);
@@ -216,7 +308,8 @@ class LoggingTest {
     }
 
     private static void assertPrivate(String message) {
-        for (String secret : List.of("private-ticket", "private-access", "private-refresh", "private-password")) {
+        for (String secret : List.of("private-ticket", "private-access", "private-refresh", "private-password",
+                "private-mail-body", "private-reset-token", "private-encrypted-payload", "private-decrypted-payload")) {
             assertFalse(message.contains(secret));
         }
     }
