@@ -12,10 +12,14 @@ import com.silver.backend.business.media.MediaService;
 import com.silver.backend.business.work.WorkService;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.WorkRow;
+import com.silver.backend.business.persistence.UploadRow;
+import com.silver.backend.business.dto.UploadCompleteInput;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
 import com.silver.backend.business.persistence.mapper.WorkMapper;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.common.ApiException;
+import com.silver.backend.common.Values;
+import com.silver.backend.common.Viewer;
 import com.silver.backend.infrastructure.Crypto;
 import com.silver.backend.infrastructure.FileStorage;
 import com.silver.backend.infrastructure.MediaEngine;
@@ -120,6 +124,40 @@ class LoggingTest {
             assertEquals(Level.INFO, event.getLevel());
             assertTrue(event.getFormattedMessage().contains("completed assetId=asset-test"));
             assertTrue(event.getFormattedMessage().contains("elapsedMs="));
+        }
+    }
+
+    @Test
+    void inspectionFailure() throws Exception {
+        MediaService service = new MediaService();
+        AssetMapper mapper = mock(AssetMapper.class);
+        MediaEngine engine = mock(MediaEngine.class);
+        FileStorage storage = mock(FileStorage.class);
+        ReflectionTestUtils.setField(service, "mapper", mapper);
+        ReflectionTestUtils.setField(service, "engine", engine);
+        ReflectionTestUtils.setField(service, "storage", storage);
+        UploadRow upload = new UploadRow();
+        upload.setId("upload-test");
+        upload.setAssetId("asset-test");
+        upload.setOwnerId("user-test");
+        upload.setState("UPLOADED");
+        upload.setExpectedSize(4);
+        upload.setExpiresAt(Values.now() + 60_000);
+        AssetRow asset = new AssetRow();
+        asset.setId("asset-test");
+        asset.setStorageKey("originals/asset-test");
+        when(mapper.upload(upload.getId())).thenReturn(upload);
+        when(mapper.asset(asset.getId())).thenReturn(asset);
+        when(storage.size(asset.getStorageKey())).thenReturn(4L);
+        when(engine.inspect(asset.getStorageKey())).thenThrow(new IOException("probe unavailable"));
+        try (Events events = new Events(MediaService.class)) {
+            ApiException error = assertThrows(ApiException.class, () -> service.complete(upload.getId(),
+                    new Viewer("user-test", "session-test"), new UploadCompleteInput(4L)));
+            assertEquals(415, error.status);
+            ILoggingEvent event = events.only();
+            assertEquals(Level.WARN, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("uploadId=upload-test, assetId=asset-test"));
+            assertEquals("probe unavailable", event.getThrowableProxy().getMessage());
         }
     }
 

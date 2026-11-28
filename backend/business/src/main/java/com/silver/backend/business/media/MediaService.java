@@ -331,6 +331,7 @@ public class MediaService {
         } catch (ApiException e) {
             throw e;
         } catch (IOException e) {
+            LOG.warn("Upload media inspection failed uploadId={}, assetId={}", id, a.getId(), e);
             throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "媒体无法读取；音视频/WebP 需要 FFmpeg 与 FFprobe");
         }
         UploadRule allowed = rule(a.getPurpose(), info.mime());
