@@ -374,4 +374,22 @@ public class AuthService {
                 }
         );
     }
+
+    public Viewer mediaViewer(String ticket) {
+        Map<String, Object> payload;
+        try {
+            payload = crypto.open("media-read", ticket, "TOKEN-INVALID");
+        } catch (ApiException invalid) {
+            throw new ApiException(401, "TOKEN_INVALID", "媒体访问凭证无效或已过期");
+        }
+        if (!(payload.get("user") instanceof String userId)
+                || !(payload.get("session") instanceof String sessionId)
+                || userId.isBlank()
+                || sessionId.isBlank()) {
+            throw new ApiException(401, "TOKEN_INVALID", "媒体访问凭证无效");
+        }
+        Viewer viewer = new Viewer(userId, sessionId);
+        checkSession(viewer);
+        return viewer;
+    }
 }
