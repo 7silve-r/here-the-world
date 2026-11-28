@@ -1,6 +1,7 @@
 package com.silver.backend.bootstrap;
 
 import com.silver.backend.business.auth.AuthService;
+import com.silver.backend.business.media.MediaService;
 import com.silver.backend.business.work.WorkService;
 import com.silver.backend.infrastructure.MailGateway;
 import com.silver.backend.infrastructure.TaskQueue;
@@ -32,7 +33,7 @@ public class TaskConfiguration {
 
     @Bean
     SmartInitializingSingleton registerTasks(
-            TaskQueue queue, MailGateway mail, AuthService auth, WorkService work) {
+            TaskQueue queue, MailGateway mail, AuthService auth, WorkService work, MediaService media) {
         return () -> {
           queue.register(
             handler(
@@ -48,6 +49,7 @@ public class TaskConfiguration {
             )
           );
           queue.register(handler("PUBLISH", work::finishPublish));
+          queue.register(handler("ASSET", media::process));
         };
     }
 
