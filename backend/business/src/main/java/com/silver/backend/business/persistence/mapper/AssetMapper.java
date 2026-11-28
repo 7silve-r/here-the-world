@@ -2,10 +2,7 @@ package com.silver.backend.business.persistence.mapper;
 
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.UploadRow;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.*;
 
 @Mapper
 public interface AssetMapper {
@@ -51,4 +48,10 @@ public interface AssetMapper {
                    #{row.expiresAt},#{row.createdAt},#{row.expectedSize})
     """)
     void insertUpload(@Param("row") UploadRow row);
+
+    @Select("SELECT * FROM uploads WHERE id=#{id}")
+    UploadRow upload(@Param("id") String id);
+
+    @Update("UPDATE uploads SET state=#{row.state},finished_at=#{row.finishedAt} WHERE id=#{row.id}")
+    void updateUpload(@Param("row") UploadRow row);
 }

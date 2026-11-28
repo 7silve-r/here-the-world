@@ -11,10 +11,13 @@ import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
 import com.silver.backend.infrastructure.Crypto;
+import com.silver.backend.infrastructure.FileStorage;
 import com.silver.backend.infrastructure.TransactionHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +31,8 @@ public class MediaService {
     private Crypto crypto;
     @Autowired
     private Views  views;
+    @Autowired
+    private FileStorage storage;
 
     public List<UploadRule> rules() {
         return List.of(
@@ -102,5 +107,81 @@ public class MediaService {
                             Values.time(u.getExpiresAt()),
                             r.maxBytes());
                 });
+    }
+
+    private List<String> uploadLocks(UploadRow upload) {
+        return List.of("30:asset:" + upload.getAssetId(), "40:upload:" + upload.getId());
+    }
+
+    public void transfer(String ticket, InputStream input) throws IOException {
+        Map<String, Object> claim;
+        try {
+            claim = crypto.open("upload", ticket, "UPLOAD_EXPIRED");
+        } catch (ApiException invalid) {
+            throw new ApiException(410, "UPLOAD_EXPIRED", "上传票据无效或已过期");
+        }
+        String id = (String) claim.get("upload");
+        UploadRow hint = mapper.upload(id);
+        if (hint == null) {
+            throw new ApiException(404, "UPLOAD_NOT_FOUND", "上传不存在");
+        }
+        List<String> resources = uploadLocks(hint);
+        UploadRow upload =
+                tx.write(
+                        resources,
+                        () -> {
+                            UploadRow u = mapper.upload(id);
+                            if (u == null) {
+                                throw new ApiException(404, "UPLOAD_NOT_FOUND", "上传不存在");
+                            }
+                            if (u.getExpiresAt() <= Values.now()) {
+                                throw new ApiException(410, "UPLOAD_EXPIRED", "上传已过期");
+                            }
+                            if (!"CREATED".equals(u.getState())) {
+                                throw new ApiException(409, "UPLOAD_ALREADY_COMPLETED", "上传正在接收或已结束");
+                            }
+                            u.setState("RECEIVING");
+                            mapper.updateUpload(u);
+                            return u;
+                        });
+        AssetRow a = mapper.asset(upload.getAssetId());
+        try {
+            long actual = storage.write(
+                    a.getStorageKey(),
+                    input,
+                    Math.min(upload.getExpectedSize(), rule(a.getPurpose(), a.getMimeType()).maxBytes()));
+            tx.run(
+                    resources,
+                    () -> {
+                        UploadRow current = mapper.upload(id);
+                        if (current == null
+                                || !"RECEIVING".equals(current.getState())
+                                || current.getExpiresAt() <= Values.now()) {
+                            throw new ApiException(410, "UPLOAD_EXPIRED", "上传已取消或过期");
+                        }
+                        if (actual != current.getExpectedSize()) {
+                            throw ApiException.invalid(
+                                    "sizeBytes", "INVALID_FORMAT", "实际大小与申请大小不一致");
+                        }
+                        current.setState("UPLOADED");
+                        mapper.updateUpload(current);
+                    });
+        } catch (IOException | RuntimeException failure) {
+            tx.run(
+                    resources,
+                    () -> {
+                        try {
+                            storage.delete(a.getStorageKey());
+                        } catch (IOException cleanup) {
+                            failure.addSuppressed(cleanup);
+                        }
+                        UploadRow current = mapper.upload(id);
+                        if (current != null && "RECEIVING".equals(current.getState())) {
+                            current.setState("CREATED");
+                            mapper.updateUpload(current);
+                        }
+                    });
+            throw failure;
+        }
     }
 }
