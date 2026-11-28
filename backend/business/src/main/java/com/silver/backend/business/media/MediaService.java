@@ -121,7 +121,9 @@ public class MediaService {
         } catch (ApiException invalid) {
             throw new ApiException(410, "UPLOAD_EXPIRED", "上传票据无效或已过期");
         }
-        String id = (String) claim.get("upload");
+        if (!(claim.get("upload") instanceof String id) || id.isBlank() || id.length() > 64) {
+            throw new ApiException(410, "UPLOAD_EXPIRED", "上传票据无效或已过期");
+        }
         UploadRow hint = mapper.upload(id);
         if (hint == null) {
             throw new ApiException(404, "UPLOAD_NOT_FOUND", "上传不存在");
