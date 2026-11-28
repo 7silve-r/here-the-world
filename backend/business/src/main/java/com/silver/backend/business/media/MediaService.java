@@ -1,10 +1,7 @@
 package com.silver.backend.business.media;
 
 import com.silver.backend.business.Views;
-import com.silver.backend.business.dto.Ack;
-import com.silver.backend.business.dto.UploadInput;
-import com.silver.backend.business.dto.UploadRule;
-import com.silver.backend.business.dto.UploadTicket;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.UploadRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
@@ -285,5 +282,58 @@ public class MediaService {
                     });
             discardOutput(outputId);
         }
+    }
+
+    public Asset complete(String id, Viewer viewer, UploadCompleteInput in) throws IOException {
+        UploadRow u = owned(id, viewer);
+        AssetRow a = mapper.asset(u.getAssetId());
+        if ("COMPLETED".equals(u.getState())) {
+            return views.asset(a, viewer);
+        }
+        if (u.getExpiresAt() <= Values.now()) {
+            throw new ApiException(410, "UPLOAD_EXPIRED", "上传已过期");
+        }
+        if (!"UPLOADED".equals(u.getState())) {
+            throw ApiException.invalid("uploadId", "NOT_ALLOWED", "请先完成二进制上传");
+        }
+        if (storage.size(a.getStorageKey()) != in.sizeBytes() || in.sizeBytes() != u.getExpectedSize()) {
+            throw ApiException.invalid("sizeBytes", "INVALID_FORMAT", "实际文件大小不一致");
+        }
+        MediaEngine.Info info;
+        try {
+            info = engine.inspect(a.getStorageKey());
+        } catch (ApiException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "媒体无法读取；音视频/WebP 需要 FFmpeg 与 FFprobe");
+        }
+        UploadRule allowed = rule(a.getPurpose(), info.mime());
+        if (!allowed.mediaType().equals(a.getMediaType())) {
+            throw new ApiException(422, "ASSET_TYPE_MISMATCH", "文件内容与声明类型不符");
+        }
+        return tx.write(
+                uploadLocks(u),
+                () -> {
+                    UploadRow current = owned(id, viewer);
+                    AssetRow row = mapper.asset(current.getAssetId());
+                    if ("COMPLETED".equals(current.getState())) {
+                        return views.asset(row, viewer);
+                    }
+                    if (!"UPLOADED".equals(current.getState()) || current.getExpiresAt() <= Values.now()) {
+                        throw new ApiException(410, "UPLOAD_EXPIRED", "上传已取消或过期");
+                    }
+                    row.setMimeType(info.mime());
+                    row.setWidth(info.width());
+                    row.setHeight(info.height());
+                    row.setDurationMs(info.durationMs());
+                    row.setSizeBytes(in.sizeBytes());
+                    row.setStatus("PROCESSING");
+                    mapper.updateAsset(row);
+                    current.setState("COMPLETED");
+                    current.setFinishedAt(Values.now());
+                    mapper.updateUpload(current);
+                    taskQueue.enqueue("ASSET", Values.map("asset", row.getId()));
+                    return views.asset(row, viewer);
+                });
     }
 }
