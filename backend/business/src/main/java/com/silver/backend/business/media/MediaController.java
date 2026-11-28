@@ -48,4 +48,11 @@ public class MediaController {
         service.transfer(ticket, req.getInputStream());
         return ResponseEntity.ok().build();
     }
+
+    @DeleteMapping("/uploads/{uploadId}")
+    public ResponseEntity<?> cancel(@PathVariable("uploadId") String uploadId, HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.cancel(uploadId, RequestContext.viewer(req)));
+    }
 }
