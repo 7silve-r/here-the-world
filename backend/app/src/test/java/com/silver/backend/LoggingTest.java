@@ -8,9 +8,19 @@ import com.silver.backend.bootstrap.ApiSecurityFilter;
 import com.silver.backend.bootstrap.GlobalExceptionHandler;
 import com.silver.backend.bootstrap.HttpErrors;
 import com.silver.backend.business.auth.AuthService;
+import com.silver.backend.business.media.MediaService;
+import com.silver.backend.business.work.WorkService;
+import com.silver.backend.business.persistence.AssetRow;
+import com.silver.backend.business.persistence.WorkRow;
+import com.silver.backend.business.persistence.mapper.AssetMapper;
+import com.silver.backend.business.persistence.mapper.WorkMapper;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.infrastructure.Crypto;
+import com.silver.backend.infrastructure.FileStorage;
+import com.silver.backend.infrastructure.MediaEngine;
+import com.silver.backend.infrastructure.TaskQueue;
+import com.silver.backend.infrastructure.TransactionHelper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -22,6 +32,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -83,6 +95,115 @@ class LoggingTest {
             verify(errors).write(eq(request), any(), argThat(e -> e.status == 503));
         }
     }
+
+    @Test
+    void mediaFailure() throws Exception {
+        MediaFixture fixture = media(true);
+        doThrow(new IOException("decoder failed")).when(fixture.engine()).process(anyString(), anyString(), any());
+        try (Events events = new Events(MediaService.class)) {
+            fixture.service().process(Map.of("assetId", "asset-test"));
+            ILoggingEvent event = events.only();
+            assertEquals(Level.ERROR, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("assetId=asset-test"));
+            assertTrue(event.getFormattedMessage().contains("outputId=asset-test-worker-test"));
+            assertEquals("decoder failed", event.getThrowableProxy().getMessage());
+        }
+    }
+
+    @Test
+    void mediaSuccess() throws Exception {
+        MediaFixture fixture = media(true);
+        try (Events events = new Events(MediaService.class)) {
+            fixture.service().process(Map.of("assetId", "asset-test"));
+            ILoggingEvent event = events.only();
+            assertEquals(Level.INFO, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("completed assetId=asset-test"));
+            assertTrue(event.getFormattedMessage().contains("elapsedMs="));
+        }
+    }
+
+    @Test
+    void cleanupFailure() throws Exception {
+        MediaFixture fixture = media(false);
+        String key = "thumbnails/asset-test-worker-test.jpg";
+        doThrow(new IOException("disk unavailable")).when(fixture.storage()).delete(key);
+        try (Events events = new Events(MediaService.class)) {
+            fixture.service().process(Map.of("assetId", "asset-test"));
+            ILoggingEvent event = events.list().stream()
+                    .filter(e -> e.getFormattedMessage().startsWith("Media output cleanup failed")).findFirst().orElseThrow();
+            assertEquals(Level.WARN, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("key=" + key));
+            assertEquals("disk unavailable", event.getThrowableProxy().getMessage());
+            assertTrue(events.list().stream().noneMatch(e -> e.getLevel() == Level.ERROR));
+            verify(fixture.storage()).delete("processed/asset-test-worker-test.mp4");
+            verify(fixture.storage()).delete("processed/asset-test-worker-test.mp3");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void publishResult(boolean failed) {
+        WorkService service = new WorkService();
+        WorkMapper works = mock(WorkMapper.class);
+        AssetMapper assets = mock(AssetMapper.class);
+        TaskQueue queue = mock(TaskQueue.class);
+        ReflectionTestUtils.setField(service, "tx", transaction());
+        ReflectionTestUtils.setField(service, "workMapper", works);
+        ReflectionTestUtils.setField(service, "assetMapper", assets);
+        ReflectionTestUtils.setField(service, "taskQueue", queue);
+        WorkRow work = new WorkRow();
+        work.setId("work-test");
+        work.setStatus("PROCESSING");
+        work.setKind("IMAGE");
+        work.setPublishTaskId("publish-test");
+        AssetRow asset = new AssetRow();
+        asset.setStatus(failed ? "FAILED" : "READY");
+        when(works.get("work-test")).thenReturn(work);
+        when(works.assets("work-test")).thenReturn(List.of("asset-test"));
+        when(assets.asset("asset-test")).thenReturn(asset);
+        when(works.update(eq(work), anyLong())).thenReturn(1);
+        when(queue.ownsExecution()).thenReturn(true);
+        try (Events events = new Events(WorkService.class)) {
+            service.finishPublish(Map.of("work", "work-test", "job", "publish-test"));
+            ILoggingEvent event = events.only();
+            assertEquals(failed ? Level.WARN : Level.INFO, event.getLevel());
+            assertTrue(event.getFormattedMessage().contains("workId=work-test"));
+            assertTrue(event.getFormattedMessage().contains("jobId=publish-test"));
+        }
+    }
+
+    private MediaFixture media(boolean owned) throws IOException {
+        MediaService service = new MediaService();
+        MediaEngine engine = mock(MediaEngine.class);
+        FileStorage storage = mock(FileStorage.class);
+        AssetMapper assets = mock(AssetMapper.class);
+        TaskQueue queue = mock(TaskQueue.class);
+        ReflectionTestUtils.setField(service, "tx", transaction());
+        ReflectionTestUtils.setField(service, "engine", engine);
+        ReflectionTestUtils.setField(service, "storage", storage);
+        ReflectionTestUtils.setField(service, "mapper", assets);
+        ReflectionTestUtils.setField(service, "taskQueue", queue);
+        AssetRow asset = new AssetRow();
+        asset.setId("asset-test");
+        asset.setStatus("PROCESSING");
+        asset.setStorageKey("originals/asset-test");
+        when(assets.asset("asset-test")).thenReturn(asset);
+        when(queue.executionId()).thenReturn("worker-test");
+        when(queue.ownsExecution()).thenReturn(owned);
+        when(engine.inspect(asset.getStorageKey())).thenReturn(new MediaEngine.Info("image/png", "IMAGE", 8, 6, null));
+        when(engine.process(anyString(), anyString(), any()))
+                .thenReturn(new MediaEngine.Output(asset.getStorageKey(), "thumbnails/asset-test-worker-test.jpg"));
+        return new MediaFixture(service, engine, storage);
+    }
+
+    @SuppressWarnings("unchecked")
+    private TransactionHelper transaction() {
+        TransactionHelper tx = mock(TransactionHelper.class);
+        when(tx.write(anyString(), any(Supplier.class))).thenAnswer(call -> ((Supplier<?>) call.getArgument(1)).get());
+        return tx;
+    }
+
+    private record MediaFixture(MediaService service, MediaEngine engine, FileStorage storage) {}
 
     private static MockHttpServletRequest request() {
         var request = new MockHttpServletRequest("GET", "/api/v1/assets/example");
