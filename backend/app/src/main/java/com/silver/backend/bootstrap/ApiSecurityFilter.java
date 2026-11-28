@@ -52,15 +52,24 @@ public class ApiSecurityFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String header = request.getHeader("Authorization");
+            Viewer viewer = null;
             if (header != null) {
                 if (!header.startsWith("Bearer ") || header.length() > 9000) {
                     throw new ApiException(401, "TOKEN_INVALID", "登录凭证无效");
                 }
-                Viewer v = crypto.verifyJwt(header.substring(7));
-                service.checkSession(v);
-                request.setAttribute("viewer", v);
+                viewer = crypto.verifyJwt(header.substring(7));
+                service.checkSession(viewer);
+            } else if (("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod()))
+                    && request.getRequestURI().startsWith("/api/v1/media/private/")) {
+                String ticket = AuthController.getCookie(request, "htw_media");
+                if (ticket != null) {
+                    viewer = service.mediaViewer(ticket);
+                }
+            }
+            if (viewer != null) {
+                request.setAttribute("viewer", viewer);
                 SecurityContextHolder.getContext()
-                        .setAuthentication(new UsernamePasswordAuthenticationToken(v, null, List.of()));
+                        .setAuthentication(new UsernamePasswordAuthenticationToken(viewer, null, List.of()));
             }
             if ("POST".equals(request.getMethod()) && request.getRequestURI().startsWith("/api/v1/auth/")) {
                 String origin = request.getHeader("Origin");

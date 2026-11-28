@@ -50,6 +50,8 @@ public class SecurityConfig {
                                         .permitAll()
                                         .requestMatchers("/api/v1/auth/change-password")
                                         .authenticated()
+                                        .requestMatchers("/api/v1/media/private/**")
+                                        .authenticated()
                                         .requestMatchers("/api/v1/auth/**", "/api/v1/media/**")
                                         .permitAll()
                                         .requestMatchers(
