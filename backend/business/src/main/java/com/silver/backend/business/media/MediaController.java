@@ -2,6 +2,7 @@ package com.silver.backend.business.media;
 
 import com.silver.backend.business.HttpReplies;
 import com.silver.backend.business.RequestContext;
+import com.silver.backend.business.dto.UploadCompleteInput;
 import com.silver.backend.business.dto.UploadInput;
 import com.silver.backend.business.system.RequestControl;
 import com.silver.backend.business.system.Requests;
@@ -54,5 +55,28 @@ public class MediaController {
         return HttpReplies.ok(
                 req,
                 service.cancel(uploadId, RequestContext.viewer(req)));
+    }
+
+    @PostMapping("/uploads/{uploadId}/complete")
+    public ResponseEntity<?> complete(
+            @PathVariable("uploadId") String uploadId,
+            @RequestBody Map<String, Object> body,
+            HttpServletRequest req)
+            throws IOException {
+        return HttpReplies.reply(
+                req,
+                Reply.of(
+                        202,
+                        service.complete(
+                                uploadId,
+                                RequestContext.viewer(req),
+                                requests.decode("UploadCompleteInput", body, UploadCompleteInput.class))));
+    }
+
+    @GetMapping("/assets/{assetId}")
+    public ResponseEntity<?> get(@PathVariable("assetId") String assetId, HttpServletRequest req) {
+        return HttpReplies.ok(
+                req,
+                service.get(assetId, RequestContext.viewer(req)));
     }
 }

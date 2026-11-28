@@ -1,19 +1,14 @@
 package com.silver.backend.business.media;
 
 import com.silver.backend.business.Views;
-import com.silver.backend.business.dto.Ack;
-import com.silver.backend.business.dto.UploadInput;
-import com.silver.backend.business.dto.UploadRule;
-import com.silver.backend.business.dto.UploadTicket;
+import com.silver.backend.business.dto.*;
 import com.silver.backend.business.persistence.AssetRow;
 import com.silver.backend.business.persistence.UploadRow;
 import com.silver.backend.business.persistence.mapper.AssetMapper;
 import com.silver.backend.common.ApiException;
 import com.silver.backend.common.Values;
 import com.silver.backend.common.Viewer;
-import com.silver.backend.infrastructure.Crypto;
-import com.silver.backend.infrastructure.FileStorage;
-import com.silver.backend.infrastructure.TransactionHelper;
+import com.silver.backend.infrastructure.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +16,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @Service
@@ -35,6 +31,10 @@ public class MediaService {
     private Views  views;
     @Autowired
     private FileStorage storage;
+    @Autowired
+    private TaskQueue taskQueue;
+    @Autowired
+    private MediaEngine engine;
 
     public List<UploadRule> rules() {
         return List.of(
@@ -224,5 +224,132 @@ public class MediaService {
                     }
                     return new Ack(true);
                 });
+    }
+
+    private void discardOutput(String id) {
+        for (String key :
+                List.of("thumbnails/" + id + ".jpg", "processed/" + id + ".mp4", "processed/" + id + ".mp3")) {
+            try {
+                storage.delete(key);
+            } catch (IOException ignored) {
+
+            }
+        }
+    }
+
+    public void process(Map<String, Object> payload) {
+        AssetRow before = mapper.asset(payload.get("assetId").toString());
+        if (before == null || !"PROCESSING".equals(before.getStatus())) {
+            return;
+        }
+        String outputId = before.getId() + "-" + taskQueue.executionId();
+        try {
+            MediaEngine.Info info = engine.inspect(before.getStorageKey());
+            MediaEngine.Output out = engine.process(outputId, before.getStorageKey(), info);
+            boolean accepted =
+                    tx.write(
+                            "30:asset:" + before.getId(),
+                            () -> {
+                                if (!taskQueue.ownsExecution()) {
+                                    return false;
+                                }
+                                AssetRow a = mapper.asset(before.getId());
+                                if (a != null && "PROCESSING".equals(a.getStatus())) {
+                                    a.setPlaybackKey(out.playback());
+                                    a.setThumbnailKey(out.thumbnail());
+                                    a.setStatus("READY");
+                                    a.setFailureCode(null);
+                                    mapper.updateAsset(a);
+                                    return true;
+                                }
+                                return false;
+                            });
+            if (!accepted) {
+                discardOutput(outputId);
+            }
+        } catch (Exception failed) {
+            try {
+                tx.run(
+                    "30:asset:" + before.getId(),
+                    () -> {
+                        if (!taskQueue.ownsExecution()) {
+                            return;
+                        }
+                        AssetRow a = mapper.asset(before.getId());
+                        if (a != null && "PROCESSING".equals(a.getStatus())) {
+                            a.setStatus("FAILED");
+                            a.setFailureCode("MEDIA_PROCESSING_FAILED");
+                            mapper.updateAsset(a);
+                        }
+                    });
+            } catch (RuntimeException recovery) {
+                if (recovery != failed) failed.addSuppressed(recovery);
+                throw new IllegalStateException("Could not record media processing failure", failed);
+            } finally {
+                discardOutput(outputId);
+            }
+        }
+    }
+
+    public Asset complete(String id, Viewer viewer, UploadCompleteInput in) throws IOException {
+        UploadRow u = owned(id, viewer);
+        AssetRow a = mapper.asset(u.getAssetId());
+        if ("COMPLETED".equals(u.getState())) {
+            return views.asset(a, viewer);
+        }
+        if (u.getExpiresAt() <= Values.now()) {
+            throw new ApiException(410, "UPLOAD_EXPIRED", "上传已过期");
+        }
+        if (!"UPLOADED".equals(u.getState())) {
+            throw ApiException.invalid("uploadId", "NOT_ALLOWED", "请先完成二进制上传");
+        }
+        if (storage.size(a.getStorageKey()) != in.sizeBytes() || in.sizeBytes() != u.getExpectedSize()) {
+            throw ApiException.invalid("sizeBytes", "INVALID_FORMAT", "实际文件大小不一致");
+        }
+        MediaEngine.Info info;
+        try {
+            info = engine.inspect(a.getStorageKey());
+        } catch (ApiException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "媒体无法读取；音视频/WebP 需要 FFmpeg 与 FFprobe");
+        }
+        UploadRule allowed = rule(a.getPurpose(), info.mime());
+        if (!allowed.mediaType().equals(a.getMediaType())) {
+            throw new ApiException(422, "ASSET_TYPE_MISMATCH", "文件内容与声明类型不符");
+        }
+        return tx.write(
+                uploadLocks(u),
+                () -> {
+                    UploadRow current = owned(id, viewer);
+                    AssetRow row = mapper.asset(current.getAssetId());
+                    if ("COMPLETED".equals(current.getState())) {
+                        return views.asset(row, viewer);
+                    }
+                    if (!"UPLOADED".equals(current.getState()) || current.getExpiresAt() <= Values.now()) {
+                        throw new ApiException(410, "UPLOAD_EXPIRED", "上传已取消或过期");
+                    }
+                    row.setMimeType(info.mime());
+                    row.setWidth(info.width());
+                    row.setHeight(info.height());
+                    row.setDurationMs(info.durationMs());
+                    row.setSizeBytes(in.sizeBytes());
+                    row.setStatus("PROCESSING");
+                    mapper.updateAsset(row);
+                    current.setState("COMPLETED");
+                    current.setFinishedAt(Values.now());
+                    mapper.updateUpload(current);
+                    taskQueue.enqueue("ASSET", Values.map("assetId", row.getId()));
+                    return views.asset(row, viewer);
+                });
+    }
+
+    public Asset get(String id, Viewer viewer) {
+        AssetRow a = mapper.asset(id);
+        if (a == null
+            || (!Objects.equals(a.getOwnerId(), viewer.userId()) && !views.publicAsset(id))) {
+            throw new ApiException(404, "ASSET_NOT_FOUND", "资产不存在");
+        }
+        return views.asset(a, viewer);
     }
 }

@@ -2,6 +2,7 @@ package com.silver.backend;
 
 import com.silver.backend.bootstrap.TaskConfiguration;
 import com.silver.backend.business.auth.AuthService;
+import com.silver.backend.business.media.MediaService;
 import com.silver.backend.business.dto.EmailInput;
 import com.silver.backend.business.dto.RegisterInput;
 import com.silver.backend.business.dto.VerifyEmailInput;
@@ -186,6 +187,7 @@ class TaskDispatchTest extends BackendTestSupport {
         MailGateway gateway = mock(MailGateway.class);
         AuthService authentication = mock(AuthService.class);
         WorkService publications = mock(WorkService.class);
+        MediaService media = mock(MediaService.class);
         var runner = new ApplicationContextRunner()
                 .withUserConfiguration(TaskConfiguration.class, Scheduling.class)
                 .withPropertyValues("htw.task-poll-ms=3600000")
@@ -195,6 +197,7 @@ class TaskDispatchTest extends BackendTestSupport {
                     context.getBeanFactory().registerSingleton("mail", gateway);
                     context.getBeanFactory().registerSingleton("auth", authentication);
                     context.getBeanFactory().registerSingleton("works", publications);
+                    context.getBeanFactory().registerSingleton("media", media);
                 });
         if (!"missing".equals(setting)) {
             runner = runner.withPropertyValues("htw.jobs-enabled=" + setting);
