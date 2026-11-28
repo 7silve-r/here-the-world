@@ -268,7 +268,8 @@ public class MediaService {
                 discardOutput(outputId);
             }
         } catch (Exception failed) {
-            tx.run(
+            try {
+                tx.run(
                     "30:asset:" + before.getId(),
                     () -> {
                         if (!taskQueue.ownsExecution()) {
@@ -281,7 +282,12 @@ public class MediaService {
                             mapper.updateAsset(a);
                         }
                     });
-            discardOutput(outputId);
+            } catch (RuntimeException recovery) {
+                if (recovery != failed) failed.addSuppressed(recovery);
+                throw new IllegalStateException("Could not record media processing failure", failed);
+            } finally {
+                discardOutput(outputId);
+            }
         }
     }
 
