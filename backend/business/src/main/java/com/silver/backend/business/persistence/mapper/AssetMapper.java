@@ -1,9 +1,8 @@
 package com.silver.backend.business.persistence.mapper;
 
 import com.silver.backend.business.persistence.AssetRow;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Select;
+import com.silver.backend.business.persistence.UploadRow;
+import org.apache.ibatis.annotations.*;
 
 @Mapper
 public interface AssetMapper {
@@ -25,4 +24,44 @@ public interface AssetMapper {
                      AND wa.asset_id = #{id}))
     """)
     long publicWorkReferences(@Param("id") String id);
+
+    @Insert("""
+        INSERT INTO 
+            assets(id,owner_id,purpose,
+                   media_type,status,mime_type,
+                   storage_key,playback_key,thumbnail_key,
+                   failure_code,size_bytes,created_at,
+                   width,height,duration_ms)
+            VALUES(#{row.id},#{row.ownerId},#{row.purpose},
+                   #{row.mediaType},#{row.status},#{row.mimeType},
+                   #{row.storageKey},#{row.playbackKey},#{row.thumbnailKey},
+                   #{row.failureCode},#{row.sizeBytes},#{row.createdAt},
+                   #{row.width},#{row.height},#{row.durationMs})
+    """)
+    void insertAsset(@Param("row") AssetRow row);
+
+    @Insert("""
+        INSERT INTO 
+            uploads(id,asset_id,owner_id,state,
+                    expires_at,created_at,expected_size)
+            VALUES(#{row.id},#{row.assetId},#{row.ownerId},#{row.state},
+                   #{row.expiresAt},#{row.createdAt},#{row.expectedSize})
+    """)
+    void insertUpload(@Param("row") UploadRow row);
+
+    @Select("SELECT * FROM uploads WHERE id=#{id}")
+    UploadRow upload(@Param("id") String id);
+
+    @Update("UPDATE uploads SET state=#{row.state},finished_at=#{row.finishedAt} WHERE id=#{row.id}")
+    void updateUpload(@Param("row") UploadRow row);
+
+    @Update("""
+        UPDATE assets 
+        SET status=#{row.status},mime_type=#{row.mimeType},storage_key=#{row.storageKey},
+            playback_key=#{row.playbackKey},thumbnail_key=#{row.thumbnailKey},failure_code=#{row.failureCode},
+            size_bytes=#{row.sizeBytes},width=#{row.width},height=#{row.height},
+            duration_ms=#{row.durationMs},cleaned_at=#{row.cleanedAt}
+        WHERE id=#{row.id}
+    """)
+    void updateAsset(@Param("row") AssetRow row);
 }
