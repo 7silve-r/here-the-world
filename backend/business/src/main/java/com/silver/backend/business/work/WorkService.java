@@ -17,11 +17,14 @@ import com.silver.backend.infrastructure.TaskQueue;
 import com.silver.backend.infrastructure.TransactionHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 @Service
 public class WorkService {
+    private static final Logger LOG = LoggerFactory.getLogger(WorkService.class);
     @Autowired
     private Views views;
     @Autowired
@@ -245,14 +248,14 @@ public class WorkService {
     }
 
     public void finishPublish(Map<String, Object> payload) {
-        tx.run(
+        String outcome = tx.write(
                 "20:work:" + payload.get("work"),
                 () -> {
-                    if (!taskQueue.ownsExecution()) return;
+                    if (!taskQueue.ownsExecution()) return null;
                     WorkRow w = workMapper.get((String) payload.get("work"));
                     if (w == null
                             || !"PROCESSING".equals(w.getStatus())
-                            || !Objects.equals(w.getPublishTaskId(), payload.get("job"))) return;
+                            || !Objects.equals(w.getPublishTaskId(), payload.get("job"))) return null;
                    WorkInput input = new WorkInput(
                            w.getKind(), w.getTitle(), w.getBody(),
                            workMapper.assets(w.getId()), w.getCoverAssetId(), w.getMusicLinkId());
@@ -271,8 +274,15 @@ public class WorkService {
                        w.setFailureCode(null);
                    }
                    change(w);
+                   return w.getStatus();
                 }
         );
+        if ("FAILED".equals(outcome)) {
+            LOG.warn("Work publication failed workId={}, jobId={}, failureCode=MEDIA_PROCESSING_FAILED",
+                    payload.get("work"), payload.get("job"));
+        } else if ("PUBLISHED".equals(outcome)) {
+            LOG.info("Work publication completed workId={}, jobId={}", payload.get("work"), payload.get("job"));
+        }
     }
 
     public Reply delete(Viewer viewer, String id, String ifMatch) {

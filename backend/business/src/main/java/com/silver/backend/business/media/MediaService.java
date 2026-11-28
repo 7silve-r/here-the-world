@@ -11,6 +11,8 @@ import com.silver.backend.common.Viewer;
 import com.silver.backend.infrastructure.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,6 +23,7 @@ import java.util.Set;
 
 @Service
 public class MediaService {
+    private static final Logger LOG = LoggerFactory.getLogger(MediaService.class);
     @Autowired
     private TransactionHelper tx;
     @Autowired
@@ -182,6 +185,8 @@ public class MediaService {
                                 storage.delete(a.getStorageKey());
                             } catch (IOException cleanup) {
                                 failure.addSuppressed(cleanup);
+                                LOG.warn("Upload file cleanup failed uploadId={}, assetId={}",
+                                        id, a.getId(), cleanup);
                             }
                             UploadRow current = mapper.upload(id);
                             if (current != null && "RECEIVING".equals(current.getState())) {
@@ -191,6 +196,7 @@ public class MediaService {
                         });
             } catch (RuntimeException recovery) {
                 if (recovery != failure) failure.addSuppressed(recovery);
+                LOG.error("Upload state recovery failed uploadId={}, assetId={}", id, a.getId(), recovery);
             }
             throw failure;
         }
@@ -231,8 +237,8 @@ public class MediaService {
                 List.of("thumbnails/" + id + ".jpg", "processed/" + id + ".mp4", "processed/" + id + ".mp3")) {
             try {
                 storage.delete(key);
-            } catch (IOException ignored) {
-
+            } catch (IOException cleanup) {
+                LOG.warn("Media output cleanup failed outputId={}, key={}", id, key, cleanup);
             }
         }
     }
@@ -243,6 +249,7 @@ public class MediaService {
             return;
         }
         String outputId = before.getId() + "-" + taskQueue.executionId();
+        long started = System.nanoTime();
         try {
             MediaEngine.Info info = engine.inspect(before.getStorageKey());
             MediaEngine.Output out = engine.process(outputId, before.getStorageKey(), info);
@@ -265,23 +272,35 @@ public class MediaService {
                                 return false;
                             });
             if (!accepted) {
+                LOG.warn("Media result discarded assetId={}, outputId={}", before.getId(), outputId);
                 discardOutput(outputId);
+            } else {
+                LOG.info("Media processing completed assetId={}, outputId={}, elapsedMs={}",
+                        before.getId(), outputId, (System.nanoTime() - started) / 1_000_000);
             }
         } catch (Exception failed) {
             try {
-                tx.run(
+                boolean recorded = tx.write(
                     "30:asset:" + before.getId(),
                     () -> {
                         if (!taskQueue.ownsExecution()) {
-                            return;
+                            return false;
                         }
                         AssetRow a = mapper.asset(before.getId());
                         if (a != null && "PROCESSING".equals(a.getStatus())) {
                             a.setStatus("FAILED");
                             a.setFailureCode("MEDIA_PROCESSING_FAILED");
                             mapper.updateAsset(a);
+                            return true;
                         }
+                        return false;
                     });
+                if (recorded) {
+                    LOG.error("Media processing failed assetId={}, outputId={}, elapsedMs={}",
+                            before.getId(), outputId, (System.nanoTime() - started) / 1_000_000, failed);
+                } else {
+                    LOG.warn("Obsolete media failure discarded assetId={}, outputId={}", before.getId(), outputId);
+                }
             } catch (RuntimeException recovery) {
                 if (recovery != failed) failed.addSuppressed(recovery);
                 throw new IllegalStateException("Could not record media processing failure", failed);
@@ -312,6 +331,7 @@ public class MediaService {
         } catch (ApiException e) {
             throw e;
         } catch (IOException e) {
+            LOG.warn("Upload media inspection failed uploadId={}, assetId={}", id, a.getId(), e);
             throw new ApiException(415, "UNSUPPORTED_MEDIA_TYPE", "媒体无法读取；音视频/WebP 需要 FFmpeg 与 FFprobe");
         }
         UploadRule allowed = rule(a.getPurpose(), info.mime());

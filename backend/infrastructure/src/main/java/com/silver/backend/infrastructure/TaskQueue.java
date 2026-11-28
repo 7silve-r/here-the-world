@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -14,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class TaskQueue {
+    private static final Logger LOG = LoggerFactory.getLogger(TaskQueue.class);
     public static class Task {
         public String id, kind, payload, state, leaseToken, lastError;
         public long availableAt, leaseUntil, createdAt;
@@ -218,24 +221,41 @@ public class TaskQueue {
         }
         try {
             execution.set(new Execution(task.id, token));
-            Handler handler = handlers.get(task.kind);
-            if (handler == null) {
-                throw new IllegalStateException("No handler for task " + task.kind);
+            try {
+                Handler handler = handlers.get(task.kind);
+                if (handler == null) {
+                    throw new IllegalStateException("No handler for task " + task.kind);
+                }
+                handler.execute(json.readMap(crypto.decrypt(task.payload)));
+                int changed = mapper.finish(task.id, token, "DONE", Values.now(), null, 0, Values.now());
+                LOG.debug("Task completion taskId={}, kind={}, accepted={}", task.id, task.kind, changed == 1);
+            } catch (Pending waiting) {
+                int changed = mapper.finish(task.id, token, "PENDING", Values.now() + 2_000, null, 0, Values.now());
+                LOG.debug("Task waiting taskId={}, kind={}, accepted={}", task.id, task.kind, changed == 1);
+            } catch (Exception failure) {
+                int next = task.attempts + 1;
+                String state = next >= 8 ? "FAILED" : "PENDING";
+                long retryAt = Values.now() + Math.min(300_000L, 1_000L * (1L << Math.min(next, 8)));
+                int changed;
+                try {
+                    changed = mapper.finish(task.id, token, state, retryAt,
+                            failure.getClass().getSimpleName(), 1, Values.now());
+                } catch (RuntimeException persistence) {
+                    if (persistence != failure) persistence.addSuppressed(failure);
+                    throw persistence;
+                }
+                if (changed != 1) {
+                    LOG.debug("Obsolete task failure ignored taskId={}, kind={}", task.id, task.kind);
+                } else if ("FAILED".equals(state)) {
+                    LOG.error("Task failed taskId={}, kind={}, attempt={}", task.id, task.kind, next, failure);
+                } else {
+                    LOG.warn("Task retry scheduled taskId={}, kind={}, attempt={}, retryAt={}",
+                            task.id, task.kind, next, retryAt, failure);
+                }
             }
-            handler.execute(json.readMap(crypto.decrypt(task.payload)));
-            mapper.finish(task.id, token, "DONE", Values.now(), null, 0, Values.now());
-        } catch (Pending waiting) {
-            mapper.finish(task.id, token, "PENDING", Values.now() + 2_000, null, 0, Values.now());
-        } catch (Exception failure) {
-            int next = task.attempts + 1;
-            mapper.finish(
-                    task.id,
-                    token,
-                    next >= 8 ? "FAILED" : "PENDING",
-                    Values.now() + Math.min(300_000L, 1_000L * (1L << Math.min(next, 8))),
-                    failure.getClass().getSimpleName(),
-                    1,
-                    Values.now());
+        } catch (RuntimeException persistence) {
+            LOG.error("Task state update failed taskId={}, kind={}", task.id, task.kind, persistence);
+            throw persistence;
         } finally {
             execution.remove();
         }

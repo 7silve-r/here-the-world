@@ -61,18 +61,24 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<?> dataInaccessible(Exception e, HttpServletRequest r) {
         logger.error(
-                "Database error requestId={}, type={}",
+                "Database error requestId={}, method={}, path={}, type={}",
                 r.getAttribute("requestId"),
-                e.getClass().getSimpleName());
+                r.getMethod(),
+                r.getRequestURI(),
+                e.getClass().getSimpleName(),
+                e);
         return httpErrors.response(r, new ApiException(503, "SERVICE_UNAVAILABLE", "数据库暂时不可用"));
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<?> unexpectedException(Exception e, HttpServletRequest r) {
         logger.error(
-                "Unhandled error requestId={}, type={}",
+                "Unhandled error requestId={}, method={}, path={}, type={}",
                 r.getAttribute("requestId"),
-                e.getClass().getSimpleName());
+                r.getMethod(),
+                r.getRequestURI(),
+                e.getClass().getSimpleName(),
+                e);
         return httpErrors.response(r, new ApiException(500, "INTERNAL_ERROR", "服务内部错误"));
     }
 }
